@@ -1,0 +1,17 @@
+dimension 3
+units metal
+read_data structure.lammps
+
+pair_style  mlip_gtinv
+pair_coeff * * mlp.lammps Ti Al
+
+# Define minimization parameters
+variable etol equal 0.0
+variable ftol equal 1.0e-10
+variable maxiter equal 10000
+variable maxeval equal 10000
+
+fix 3 all box/relax  aniso 0.0
+minimize ${etol} ${ftol} ${maxiter} ${maxeval}
+
+write_dump all custom dump.atom id type x y z modify format line "%d %d %10.15g %10.15g %10.15g"
