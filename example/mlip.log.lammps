@@ -1,0 +1,81 @@
+LAMMPS (3 Mar 2020)
+OMP_NUM_THREADS environment is not set. Defaulting to 1 thread. (../comm.cpp:94)
+  using 1 OpenMP thread(s) per MPI task
+dimension 3
+units metal
+read_data structure.lammps
+  orthogonal box = (0 0 0) to (8 8 8)
+  1 by 1 by 1 MPI processor grid
+  reading atoms ...
+  32 atoms
+  read_data CPU = 0.000749826 secs
+
+pair_style  mlip_gtinv
+pair_coeff * * mlp.lammps Ti Al
+
+# Define minimization parameters
+variable etol equal 0.0
+variable ftol equal 1.0e-10
+variable maxiter equal 10000
+variable maxeval equal 10000
+
+fix 3 all box/relax  aniso 0.0
+minimize ${etol} ${ftol} ${maxiter} ${maxeval}
+minimize 0 ${ftol} ${maxiter} ${maxeval}
+minimize 0 1e-10 ${maxiter} ${maxeval}
+minimize 0 1e-10 10000 ${maxeval}
+minimize 0 1e-10 10000 10000
+WARNING: Using 'neigh_modify every 1 delay 0 check yes' setting during minimization (../min.cpp:190)
+Neighbor list info ...
+  update every 1 steps, delay 0 steps, check yes
+  max neighbors/atom: 2000, page size: 100000
+  master list distance cutoff = 10
+  ghost atom cutoff = 10
+  binsize = 5, bins = 2 2 2
+  1 neighbor lists, perpetual/occasional/extra = 1 0 0
+  (1) pair mlip_gtinv, perpetual
+      attributes: half, newton on
+      pair build: half/bin/atomonly/newton
+      stencil: half/bin/3d/newton
+      bin: standard
+Per MPI rank memory allocation (min/avg/max) = 4.13 | 4.13 | 4.13 Mbytes
+Step Temp E_pair E_mol TotEng Press Volume 
+       0            0   -135.32217            0   -135.32217   -7273.3702          512 
+     197            0   -136.60054            0   -136.60054 -1.2700419e-07    503.04529 
+Loop time of 38.1171 on 1 procs for 197 steps with 32 atoms
+
+99.6% CPU use with 1 MPI tasks x 1 OpenMP threads
+
+Minimization stats:
+  Stopping criterion = force tolerance
+  Energy initial, next-to-last, final = 
+        -135.322167621     -136.600541474     -136.600541474
+  Force two-norm initial, final = 6.265 9.93004e-11
+  Force max component initial, final = 2.51051 4.97514e-11
+  Final line search alpha, max atom move = 1 4.97514e-11
+  Iterations, force evaluations = 197 246
+
+MPI task timing breakdown:
+Section |  min time  |  avg time  |  max time  |%varavg| %total
+---------------------------------------------------------------
+Pair    | 38.107     | 38.107     | 38.107     |   0.0 | 99.97
+Neigh   | 0          | 0          | 0          |   0.0 |  0.00
+Comm    | 0.0028675  | 0.0028675  | 0.0028675  |   0.0 |  0.01
+Output  | 0          | 0          | 0          |   0.0 |  0.00
+Modify  | 0          | 0          | 0          |   0.0 |  0.00
+Other   |            | 0.007047   |            |       |  0.02
+
+Nlocal:    32 ave 32 max 32 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+Nghost:    1357 ave 1357 max 1357 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+Neighs:    3968 ave 3968 max 3968 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+
+Total # of neighbors = 3968
+Ave neighs/atom = 124
+Neighbor list builds = 0
+Dangerous builds = 0
+
+write_dump all custom dump.atom id type x y z modify format line "%d %d %10.15g %10.15g %10.15g"
+Total wall time: 0:00:38

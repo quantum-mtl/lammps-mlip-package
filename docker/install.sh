@@ -15,6 +15,7 @@ cp "${lammps_mlip_root}/docker/Makefile" "${lammps_root}/src/Makefile"
 # make
 curr="$(pwd)"
 cd "${lammps_root}/src"
+make yes-manybody
 make yes-user-mlip
 make ps
 make serial -j "${ncores}"

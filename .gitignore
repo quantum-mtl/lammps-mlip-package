@@ -32,3 +32,4 @@
 *.app
 
 lmp_serial
+perf.data*
