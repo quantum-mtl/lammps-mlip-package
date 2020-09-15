@@ -33,3 +33,4 @@
 
 lmp_serial
 perf.data*
+**/build/*

@@ -37,7 +37,7 @@ void get_fn(const double& dis, const struct feature_params& fp, vector1d& fn){
 
 
 void get_fn
-(const double& dis, const struct feature_params& fp, 
+(const double& dis, const struct feature_params& fp,
  vector1d& fn, vector1d& fn_dr){
 
     double fn_val, fn_dr_val;
@@ -78,7 +78,8 @@ void get_ylm(const vector1d& sph, const vector2i& lm_info, vector1dc& ylm){
 void get_ylm
 (const vector1d& sph, const vector2i& lm_info,
  vector1dc& ylm, vector1dc& ylm_dtheta){
-// ylm_dphi = i*m*Ylm
+    // ylm_dtheta is derivative of ylm w.r.t. theta
+    // ylm_dphi = i*m*Ylm
 
     const dc imag(0.0, 1.0);
 
@@ -100,6 +101,7 @@ void get_ylm
 
 }
 
+// convert cartesian coordinate (x, y, z) into solid angle (theta, phi)
 vector1d cartesian_to_spherical(const vector1d& v){
 
     bg::model::point<long double,3,bg::cs::cartesian> p1(v[0], v[1], v[2]);
