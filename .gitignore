@@ -34,3 +34,5 @@
 lmp_serial
 perf.data*
 **/build/*
+dump.atom
+log.lammps
