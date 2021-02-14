@@ -36,3 +36,4 @@ perf.data*
 **/build/*
 dump.atom
 log.lammps
+googletest
