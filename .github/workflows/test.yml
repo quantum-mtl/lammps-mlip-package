@@ -22,3 +22,18 @@ jobs:
         cmake ..
         make -j 4
         ctest -vv
+  regression-test:
+    runs-on: ubuntu-18.04
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        submodules: true
+    - name: Install dependancies
+      run: |
+        apt update
+        apt install -y cmake libboost-all-dev gcc g++ python3
+    - name: make
+      run: |
+        sh docker/install.sh
+        cd test/regression
+        python3 regression.py
