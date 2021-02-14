@@ -35,5 +35,7 @@ jobs:
     - name: make
       run: |
         sh docker/install.sh
+    - name: regression test
+      run: |
         cd test/regression
         python3 regression.py
