@@ -14,7 +14,7 @@ jobs:
     - name: Install dependancies
       run: |
         sudo apt update
-        sudo apt install -y cmake
+        sudo apt install -y cmake libboost-all-dev
     - name: make
       working-directory: ./test
       run: |
