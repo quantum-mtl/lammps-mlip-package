@@ -94,7 +94,7 @@ ctest -vv
 
 ```
 cd test/regression
-./test.sh
+python regression.py  # compare with `test/regression/dump.atom.regression`
 ```
 
 ### performance
