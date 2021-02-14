@@ -25,6 +25,5 @@ add_library(MLIP
 )
 
 add_executable(MLIPFeaturesTest test_mlip_features.cpp)
-# add_executable(MLIPFeaturesTest test.cpp)
 target_link_libraries(MLIPFeaturesTest gtest gtest_main ${Boost_LIBRALIES} MLIP)
 gtest_discover_tests(MLIPFeaturesTest)
