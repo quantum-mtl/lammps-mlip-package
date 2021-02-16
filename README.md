@@ -76,15 +76,25 @@ cd example
 
 ## Development
 
+### Installation
+Run docker container
+```
+make init-container
+make create-container
+```
+
+Build LAMMPS (after attaching a docker container)
+```
+cd workspace
+sh ./docker/install.sh
+```
+
 ### Unit test
 Unit tests are managed by GoogleTest.
-If you add a unit test, modify `test/CMakeLists.txt` and `
+If you add a unit test, modify `test/CMakeLists.txt`.
 ```
-cd test
-mkdir build && cd build
-cmake ..
-make -j 32
-ctest -vv
+make clean-test
+make test-unit
 ```
 
 ### Regression test
@@ -93,8 +103,7 @@ ctest -vv
 - 100 timesteps with NVE
 
 ```
-cd test/regression
-python regression.py  # compare with `test/regression/dump.atom.regression`
+make test-regression
 ```
 
 ### performance
