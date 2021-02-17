@@ -79,7 +79,7 @@ cd example
 ### Installation
 Run docker container
 ```
-make init-container
+make init-docker
 make create-container
 ```
 
