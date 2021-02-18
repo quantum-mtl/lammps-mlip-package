@@ -8,12 +8,12 @@ read_data structure.lammps
   1 by 1 by 1 MPI processor grid
   reading atoms ...
   32 atoms
-  read_data CPU = 0.000226974 secs
+  read_data CPU = 0.000745058 secs
 
 pair_style  mlip_gtinv
 pair_coeff * * mlp.lammps Ti Al
 
-fix 3 all box/relax  aniso 0.0
+fix 1 all nve
 run 100
 Neighbor list info ...
   update every 1 steps, delay 10 steps, check yes
@@ -28,23 +28,23 @@ Neighbor list info ...
       stencil: half/bin/3d/newton
       bin: standard
 Per MPI rank memory allocation (min/avg/max) = 3.005 | 3.005 | 3.005 Mbytes
-Step Temp E_pair E_mol TotEng Press Volume 
-       0            0   -135.32217            0   -135.32217   -7273.3702          512 
-     100            0   -135.32217            0   -135.32217   -7273.3702          512 
-Loop time of 11.5328 on 1 procs for 100 steps with 32 atoms
+Step Temp E_pair E_mol TotEng Press 
+       0            0   -135.32217            0   -135.32217   -7273.3702 
+     100    122.09646   -135.81174            0   -135.32249   -10474.942 
+Loop time of 14.5304 on 1 procs for 100 steps with 32 atoms
 
-Performance: 0.749 ns/day, 32.036 hours/ns, 8.671 timesteps/s
+Performance: 0.595 ns/day, 40.362 hours/ns, 6.882 timesteps/s
 99.9% CPU use with 1 MPI tasks x 1 OpenMP threads
 
 MPI task timing breakdown:
 Section |  min time  |  avg time  |  max time  |%varavg| %total
 ---------------------------------------------------------------
-Pair    | 11.532     | 11.532     | 11.532     |   0.0 | 99.99
+Pair    | 14.529     | 14.529     | 14.529     |   0.0 | 99.99
 Neigh   | 0          | 0          | 0          |   0.0 |  0.00
-Comm    | 0.00073504 | 0.00073504 | 0.00073504 |   0.0 |  0.01
-Output  | 2.0027e-05 | 2.0027e-05 | 2.0027e-05 |   0.0 |  0.00
-Modify  | 6.0797e-05 | 6.0797e-05 | 6.0797e-05 |   0.0 |  0.00
-Other   |            | 0.000303   |            |       |  0.00
+Comm    | 0.00094962 | 0.00094962 | 0.00094962 |   0.0 |  0.01
+Output  | 2.6941e-05 | 2.6941e-05 | 2.6941e-05 |   0.0 |  0.00
+Modify  | 0.00013137 | 0.00013137 | 0.00013137 |   0.0 |  0.00
+Other   |            | 0.0002489  |            |       |  0.00
 
 Nlocal:    32 ave 32 max 32 min
 Histogram: 1 0 0 0 0 0 0 0 0 0
@@ -59,4 +59,4 @@ Neighbor list builds = 0
 Dangerous builds = 0
 
 write_dump all custom dump.atom id type x y z modify format line "%d %d %10.15g %10.15g %10.15g"
-Total wall time: 0:00:11
+Total wall time: 0:00:15

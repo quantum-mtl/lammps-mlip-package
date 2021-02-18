@@ -37,3 +37,4 @@ perf.data*
 dump.atom
 log.lammps
 googletest
+*DS_Store
