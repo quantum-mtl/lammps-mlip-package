@@ -270,20 +270,7 @@ void PairMLIPGtinv::compute_anlm_for_each_atom(const int n_fn, const int n_lm_al
         for (int n = 0; n < n_fn; ++n){
             for (int lm0 = 0; lm0 < n_lm_all; ++lm0){
                 dc sumf(0.0), sume(0.0);
-                for (auto& inv: pot.poly_gtinv.get_gtinv_info(tc0, lm0)){
-                    regc = 0.5 * pot.reg_coeffs[n * n_gtinv + inv.reg_i];
-                    if (inv.lmt_pi != -1){
-                        valtmp = regc * inv.coeff * uniq[n][inv.lmt_pi];
-                        valreal = valtmp.real() / inv.order;
-                        valimag = valtmp.imag() / inv.order;
-                        sumf += valtmp;
-                        sume += dc(valreal,valimag);
-                    }
-                    else {
-                        sumf += regc;
-                        sume += regc;
-                    }
-                }
+                compute_anlm_main_term(n_gtinv, tc0, n, lm0, regc, valreal, valimag, valtmp, uniq, sumf, sume);
                 // polynomial model correction
                 coumpute_anlm_polynomial_model_correction(regc, valreal, valimag, uniq_p, tc0, n, lm0, valtmp, uniq,
                                                           sumf, sume);
@@ -291,6 +278,25 @@ void PairMLIPGtinv::compute_anlm_for_each_atom(const int n_fn, const int n_lm_al
                 prod_anlm_f[tc0][tag[i]-1][n][lm0] = sumf;
                 prod_anlm_e[tc0][tag[i]-1][n][lm0] = sume;
             }
+        }
+    }
+}
+
+void
+PairMLIPGtinv::compute_anlm_main_term(const int n_gtinv, const int tc0, int n, int lm0, double &regc, double &valreal,
+                                      double &valimag, dc &valtmp, const vector2dc &uniq, dc &sumf, dc &sume) {
+    for (auto& inv: pot.poly_gtinv.get_gtinv_info(tc0, lm0)){
+        regc = 0.5 * pot.reg_coeffs[n * n_gtinv + inv.reg_i];
+        if (inv.lmt_pi != -1){
+            valtmp = regc * inv.coeff * uniq[n][inv.lmt_pi];
+            valreal = valtmp.real() / inv.order;
+            valimag = valtmp.imag() / inv.order;
+            sumf += valtmp;
+            sume += dc(valreal,valimag);
+        }
+        else {
+            sumf += regc;
+            sume += regc;
         }
     }
 }

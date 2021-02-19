@@ -100,6 +100,11 @@ class PairMLIPGtinv : public Pair {
     void coumpute_anlm_polynomial_model_correction(double regc, double valreal, double valimag, const vector1d &uniq_p,
                                                    const int tc0, int n, int lm0, dc &valtmp, const vector2dc &uniq,
                                                    dc &sumf, dc &sume);
+
+    void
+    compute_anlm_main_term(const int n_gtinv, const int tc0, int n, int lm0, double &regc, double &valreal,
+                           double &valimag,
+                           dc &valtmp, const vector2dc &uniq, dc &sumf, dc &sume);
 };
 
 }
