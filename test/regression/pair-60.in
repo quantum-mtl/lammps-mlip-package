@@ -1,0 +1,11 @@
+dimension 3
+units metal
+read_data structure.lammps
+
+pair_style  mlip_pair
+pair_coeff * * pair-60.mlip Ti Al
+
+fix 1 all nve
+run 100
+
+write_dump all custom dump.atom id type x y z modify format line "%d %d %10.15g %10.15g %10.15g"

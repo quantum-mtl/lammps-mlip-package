@@ -10,34 +10,40 @@ L1_TOL = 1e-4  # tolerance for L1 displacements of two configurations
 class RegressionTest(unittest.TestCase):
 
     def setUp(self):
-        lammps_path = os.path.join(os.path.dirname(__file__), '..', '..', 'lmp_serial')
-        input_path = 'in.mlip'
+        self.lammps_path = os.path.join(os.path.dirname(__file__), '..', '..', 'lmp_serial')
+        potential_list = ['pair-60', 'gtinv-197']
+        self.input_path = [p + '.in' for p in potential_list]
+        self.dump_path = ['dump.atom.' + p for p in potential_list]
+        self.log_path = ['log.lammps.' + p for p in potential_list]
 
-        subprocess.run([lammps_path, '-in', input_path])
 
     def test_regression(self):
-        # Compare final coordinates of atoms
-        with open('dump.atom', 'r') as f:
-            coords_actual = get_atom_coords(f.read().splitlines())
-        with open('dump.atom.regression', 'r') as f:
-            coords_expect = get_atom_coords(f.read().splitlines())
+        for input_, dump, log in zip(self.input_path, self.dump_path, self.log_path):
+            with self.subTest(input_=input_, dump=dump, log=log):
+                subprocess.run([self.lammps_path, '-in', input_])
 
-        self.assertEqual(len(coords_actual), len(coords_expect))
-        l1 = 0.0
-        for actual, expect in zip(coords_actual, coords_expect):
-            l1 += sum([abs(actual[x] - expect[x]) for x in range(3)])
-        l1 /= 3 * len(coords_actual)
-        self.assertTrue(l1 < L1_TOL, "Mean coords displacement = {}".format(l1))
+                # Compare final coordinates of atoms
+                with open('dump.atom', 'r') as f:
+                    coords_actual = get_atom_coords(f.read().splitlines())
+                with open(dump, 'r') as f:
+                    coords_expect = get_atom_coords(f.read().splitlines())
 
-        # Compare thermo info
-        with open('log.lammps', 'r') as f:
-            final_temperature_actual, final_total_energy_actual, final_pressure_acutal = get_thermo_info(f.read().splitlines())
-        with open('log.lammps.regression', 'r') as f:
-            final_temperature_expect, final_total_energy_expect, final_pressure_expect = get_thermo_info(f.read().splitlines())
+                self.assertEqual(len(coords_actual), len(coords_expect))
+                l1 = 0.0
+                for actual, expect in zip(coords_actual, coords_expect):
+                    l1 += sum([abs(actual[x] - expect[x]) for x in range(3)])
+                l1 /= 3 * len(coords_actual)
+                self.assertTrue(l1 < L1_TOL, "Mean coords displacement = {}".format(l1))
 
-        self.assertAlmostEqual(final_temperature_actual, final_temperature_expect)
-        self.assertAlmostEqual(final_total_energy_actual, final_total_energy_expect)
-        self.assertAlmostEqual(final_pressure_acutal, final_pressure_expect)
+                # Compare thermo info
+                with open('log.lammps', 'r') as f:
+                    final_temperature_actual, final_total_energy_actual, final_pressure_acutal = get_thermo_info(f.read().splitlines())
+                with open(log, 'r') as f:
+                    final_temperature_expect, final_total_energy_expect, final_pressure_expect = get_thermo_info(f.read().splitlines())
+
+                self.assertAlmostEqual(final_temperature_actual, final_temperature_expect)
+                self.assertAlmostEqual(final_total_energy_actual, final_total_energy_expect)
+                self.assertAlmostEqual(final_pressure_acutal, final_pressure_expect)
 
 
 def get_atom_coords(lines):
