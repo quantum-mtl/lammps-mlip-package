@@ -285,26 +285,33 @@ void PairMLIPGtinv::compute_anlm_for_each_atom(const int n_fn, const int n_lm_al
                     }
                 }
                 // polynomial model correction
-                if (pot.fp.maxp > 1){
-                    for (const auto& pi:
-                        pot.poly_gtinv.get_polynomial_info(tc0, n, lm0)){
-                        regc = pot.reg_coeffs[pi.reg_i] * uniq_p[pi.comb_i];
-                        if (pi.lmt_pi != -1){
-                            valtmp = regc * pi.coeff * uniq[n][pi.lmt_pi];
-                            valreal = valtmp.real() / pi.order;
-                            valimag = valtmp.imag() / pi.order;
-                            sumf += valtmp;
-                            sume += dc(valreal, valimag);
-                        }
-                        else {
-                            sumf += regc;
-                            sume += regc / pi.order;
-                        }
-                    }
-                }
+                coumpute_anlm_polynomial_model_correction(regc, valreal, valimag, uniq_p, tc0, n, lm0, valtmp, uniq,
+                                                          sumf, sume);
                 // end: polynomial model correction
                 prod_anlm_f[tc0][tag[i]-1][n][lm0] = sumf;
                 prod_anlm_e[tc0][tag[i]-1][n][lm0] = sume;
+            }
+        }
+    }
+}
+
+void PairMLIPGtinv::coumpute_anlm_polynomial_model_correction(double regc, double valreal, double valimag,
+                                                              const vector1d &uniq_p, const int tc0, int n, int lm0,
+                                                              dc &valtmp, const vector2dc &uniq, dc &sumf, dc &sume) {
+    if (pot.fp.maxp > 1){
+        for (const auto& pi:
+            pot.poly_gtinv.get_polynomial_info(tc0, n, lm0)){
+            regc = pot.reg_coeffs[pi.reg_i] * uniq_p[pi.comb_i];
+            if (pi.lmt_pi != -1){
+                valtmp = regc * pi.coeff * uniq[n][pi.lmt_pi];
+                valreal = valtmp.real() / pi.order;
+                valimag = valtmp.imag() / pi.order;
+                sumf += valtmp;
+                sume += dc(valreal, valimag);
+            }
+            else {
+                sumf += regc;
+                sume += regc / pi.order;
             }
         }
     }

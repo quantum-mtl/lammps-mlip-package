@@ -96,6 +96,10 @@ class PairMLIPGtinv : public Pair {
 
     void accumulate_force_for_all_atom(int inum, int nlocal, int newton_pair, const vector2d &evdwl_array,
                                        const vector2d &fx_array, const vector2d &fy_array, const vector2d &fz_array);
+
+    void coumpute_anlm_polynomial_model_correction(double regc, double valreal, double valimag, const vector1d &uniq_p,
+                                                   const int tc0, int n, int lm0, dc &valtmp, const vector2dc &uniq,
+                                                   dc &sumf, dc &sume);
 };
 
 }
