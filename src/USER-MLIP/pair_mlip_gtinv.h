@@ -93,6 +93,9 @@ class PairMLIPGtinv : public Pair {
     compute_force_for_each_atom(const barray4dc &prod_anlm_f, const barray4dc &prod_anlm_e, const vector1d &scales,
                                 int ii,
                                 vector2d &evdwl_array, vector2d &fx_array, vector2d &fy_array, vector2d &fz_array);
+
+    void accumulate_force_for_all_atom(int inum, int nlocal, int newton_pair, const vector2d &evdwl_array,
+                                       const vector2d &fx_array, const vector2d &fy_array, const vector2d &fz_array);
 };
 
 }
