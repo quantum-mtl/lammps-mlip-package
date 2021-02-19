@@ -87,6 +87,12 @@ class PairMLIPGtinv : public Pair {
     compute_anlm_for_each_atom(const int n_fn, const int n_lm_all, const barray4dc &anlm, int ii,
                                barray4dc &prod_anlm_f,
                                barray4dc &prod_anlm_e);
+
+//    template<typename allocator>
+    void
+    compute_force_for_each_atom(const barray4dc &prod_anlm_f, const barray4dc &prod_anlm_e, const vector1d &scales,
+                                int ii,
+                                vector2d &evdwl_array, vector2d &fx_array, vector2d &fy_array, vector2d &fz_array);
 };
 
 }

@@ -108,98 +108,8 @@ void PairMLIPGtinv::compute(int eflag, int vflag)
     #pragma omp parallel for schedule(guided)
     #endif
     for (int ii = 0; ii < inum; ii++) {
-        int i,j,jnum,*jlist,type1,type2,tc,m,lm1,lm2;
-        double delx,dely,delz,dis,evdwl,fx,fy,fz,
-               costheta,sintheta,cosphi,sinphi,coeff,cc;
-        dc f1,ylm_dphi,d0,d1,d2,term1,term2,sume,sumf;
+        compute_force_for_each_atom(prod_anlm_f, prod_anlm_e, scales, ii, evdwl_array, fx_array, fy_array, fz_array);
 
-        double **x = atom->x;
-        tagint *tag = atom->tag;
-
-        i = list->ilist[ii];
-        type1 = types[tag[i]-1];
-        jnum = list->numneigh[i];
-        jlist = list->firstneigh[i];
-
-        const int n_fn = pot.modelp.get_n_fn();
-        const int n_des = pot.modelp.get_n_des();
-        const int n_lm = pot.lm_info.size();
-        const int n_lm_all = 2 * n_lm - pot.fp.maxl - 1;
-        const int n_gtinv = pot.modelp.get_linear_term_gtinv().size();
-
-        vector1d fn,fn_d;
-        vector1dc ylm,ylm_dtheta;
-        vector2dc fn_ylm,fn_ylm_dx,fn_ylm_dy,fn_ylm_dz;
-
-        fn_ylm = fn_ylm_dx = fn_ylm_dy = fn_ylm_dz 
-            = vector2dc(n_fn, vector1dc(n_lm_all));
-
-        for (int jj = 0; jj < jnum; jj++) {
-            j = jlist[jj];
-            delx = x[i][0]-x[j][0];
-            dely = x[i][1]-x[j][1];
-            delz = x[i][2]-x[j][2];
-            dis = sqrt(delx*delx + dely*dely + delz*delz);
-
-            if (dis < pot.fp.cutoff){
-                type2 = types[tag[j]-1];
-
-                const vector1d &sph 
-                    = cartesian_to_spherical(vector1d{delx,dely,delz});
-                get_fn(dis, pot.fp, fn, fn_d);
-                get_ylm(sph, pot.lm_info, ylm, ylm_dtheta);
-
-                costheta = cos(sph[0]), sintheta = sin(sph[0]);
-                cosphi = cos(sph[1]), sinphi = sin(sph[1]);
-                fabs(sintheta) > 1e-15 ? 
-                    (coeff = 1.0 / sintheta) : (coeff = 0);
-                for (int lm = 0; lm < n_lm; ++lm) {
-                    m = pot.lm_info[lm][1], lm1 = pot.lm_info[lm][2], 
-                      lm2 = pot.lm_info[lm][3];
-                    cc = pow(-1, m); 
-                    ylm_dphi = dc{0.0,1.0} * double(m) * ylm[lm];
-                    term1 = ylm_dtheta[lm] * costheta;
-                    term2 = coeff * ylm_dphi;
-                    d0 = term1 * cosphi - term2 * sinphi;
-                    d1 = term1 * sinphi + term2 * cosphi;
-                    d2 = - ylm_dtheta[lm] * sintheta;
-                    for (int n = 0; n < n_fn; ++n) {
-                        fn_ylm[n][lm1] = fn[n] * ylm[lm];
-                        fn_ylm[n][lm2] = cc * std::conj(fn_ylm[n][lm1]);
-                        f1 = fn_d[n] * ylm[lm];
-                        fn_ylm_dx[n][lm1] = - (f1 * delx + fn[n] * d0) / dis;
-                        fn_ylm_dx[n][lm2] = cc * std::conj(fn_ylm_dx[n][lm1]);
-                        fn_ylm_dy[n][lm1] = - (f1 * dely + fn[n] * d1) / dis;
-                        fn_ylm_dy[n][lm2] = cc * std::conj(fn_ylm_dy[n][lm1]);
-                        fn_ylm_dz[n][lm1] = - (f1 * delz + fn[n] * d2) / dis;
-                        fn_ylm_dz[n][lm2] = cc * std::conj(fn_ylm_dz[n][lm1]);
-                    }
-                }
-
-                const int tc0 = type_comb[type1][type2];
-                const auto &prodif = prod_anlm_f[tc0][tag[i]-1];
-                const auto &prodie = prod_anlm_e[tc0][tag[i]-1];
-                const auto &prodjf = prod_anlm_f[tc0][tag[j]-1];
-                const auto &prodje = prod_anlm_e[tc0][tag[j]-1];
-
-                evdwl = 0.0, fx = 0.0, fy = 0.0, fz = 0.0;
-                // including polynomial correction
-                for (int n = 0; n < n_fn; ++n) {
-                    for (int lm0 = 0; lm0 < n_lm_all; ++lm0) {
-                        sume = prodie[n][lm0] + prodje[n][lm0] * scales[lm0];
-                        sumf = prodif[n][lm0] + prodjf[n][lm0] * scales[lm0];
-                        evdwl += prod_real(fn_ylm[n][lm0], sume);
-                        fx += prod_real(fn_ylm_dx[n][lm0], sumf);
-                        fy += prod_real(fn_ylm_dy[n][lm0], sumf);
-                        fz += prod_real(fn_ylm_dz[n][lm0], sumf);
-                   }
-                }
-                evdwl_array[ii][jj] = evdwl;
-                fx_array[ii][jj] = fx;
-                fy_array[ii][jj] = fy;
-                fz_array[ii][jj] = fz;
-            }
-        }
     }
 
     int i,j,jnum,*jlist;
@@ -228,6 +138,104 @@ void PairMLIPGtinv::compute(int eflag, int vflag)
                             evdwl,0.0,fx,fy,fz,delx,dely,delz);
                 }
             }
+        }
+    }
+}
+
+//template<typename allocator>
+void PairMLIPGtinv::compute_force_for_each_atom(const barray4dc &prod_anlm_f, const barray4dc &prod_anlm_e,
+                                                const vector1d &scales, int ii, vector2d &evdwl_array,
+                                                vector2d &fx_array, vector2d &fy_array, vector2d &fz_array) {
+    int i,j,jnum,*jlist,type1,type2,tc,m,lm1,lm2;
+    double delx,dely,delz,dis,evdwl,fx,fy,fz,
+           costheta,sintheta,cosphi,sinphi,coeff,cc;
+    dc f1,ylm_dphi,d0,d1,d2,term1,term2,sume,sumf;
+
+    double **x = atom->x;
+    tagint *tag = atom->tag;
+
+    i = list->ilist[ii];
+    type1 = types[tag[i] - 1];
+    jnum = list->numneigh[i];
+    jlist = list->firstneigh[i];
+
+    const int n_fn = pot.modelp.get_n_fn();
+    const int n_des = pot.modelp.get_n_des();
+    const int n_lm = pot.lm_info.size();
+    const int n_lm_all = 2 * n_lm - pot.fp.maxl - 1;
+    const int n_gtinv = pot.modelp.get_linear_term_gtinv().size();
+
+    vector1d fn,fn_d;
+    vector1dc ylm,ylm_dtheta;
+    vector2dc fn_ylm,fn_ylm_dx,fn_ylm_dy,fn_ylm_dz;
+
+    fn_ylm = fn_ylm_dx = fn_ylm_dy = fn_ylm_dz
+        = vector2dc(n_fn, vector1dc(n_lm_all));
+
+    for (int jj = 0; jj < jnum; jj++) {
+        j = jlist[jj];
+        delx = x[i][0]-x[j][0];
+        dely = x[i][1]-x[j][1];
+        delz = x[i][2]-x[j][2];
+        dis = sqrt(delx*delx + dely*dely + delz*delz);
+
+        if (dis < pot.fp.cutoff){
+            type2 = types[tag[j] - 1];
+
+            const vector1d &sph
+                = cartesian_to_spherical(vector1d{delx,dely,delz});
+            get_fn(dis, pot.fp, fn, fn_d);
+            get_ylm(sph, pot.lm_info, ylm, ylm_dtheta);
+
+            costheta = cos(sph[0]), sintheta = sin(sph[0]);
+            cosphi = cos(sph[1]), sinphi = sin(sph[1]);
+            fabs(sintheta) > 1e-15 ?
+                (coeff = 1.0 / sintheta) : (coeff = 0);
+            for (int lm = 0; lm < n_lm; ++lm) {
+                m = pot.lm_info[lm][1], lm1 = pot.lm_info[lm][2],
+                lm2 = pot.lm_info[lm][3];
+                cc = pow(-1, m);
+                ylm_dphi = dc{0.0,1.0} * double(m) * ylm[lm];
+                term1 = ylm_dtheta[lm] * costheta;
+                term2 = coeff * ylm_dphi;
+                d0 = term1 * cosphi - term2 * sinphi;
+                d1 = term1 * sinphi + term2 * cosphi;
+                d2 = - ylm_dtheta[lm] * sintheta;
+                for (int n = 0; n < n_fn; ++n) {
+                    fn_ylm[n][lm1] = fn[n] * ylm[lm];
+                    fn_ylm[n][lm2] = cc * std::conj(fn_ylm[n][lm1]);
+                    f1 = fn_d[n] * ylm[lm];
+                    fn_ylm_dx[n][lm1] = - (f1 * delx + fn[n] * d0) / dis;
+                    fn_ylm_dx[n][lm2] = cc * std::conj(fn_ylm_dx[n][lm1]);
+                    fn_ylm_dy[n][lm1] = - (f1 * dely + fn[n] * d1) / dis;
+                    fn_ylm_dy[n][lm2] = cc * std::conj(fn_ylm_dy[n][lm1]);
+                    fn_ylm_dz[n][lm1] = - (f1 * delz + fn[n] * d2) / dis;
+                    fn_ylm_dz[n][lm2] = cc * std::conj(fn_ylm_dz[n][lm1]);
+                }
+            }
+
+            const int tc0 = type_comb[type1][type2];
+            const auto &prodif = prod_anlm_f[tc0][tag[i]-1];
+            const auto &prodie = prod_anlm_e[tc0][tag[i]-1];
+            const auto &prodjf = prod_anlm_f[tc0][tag[j]-1];
+            const auto &prodje = prod_anlm_e[tc0][tag[j]-1];
+
+            evdwl = 0.0, fx = 0.0, fy = 0.0, fz = 0.0;
+            // including polynomial correction
+            for (int n = 0; n < n_fn; ++n) {
+                for (int lm0 = 0; lm0 < n_lm_all; ++lm0) {
+                    sume = prodie[n][lm0] + prodje[n][lm0] * scales[lm0];
+                    sumf = prodif[n][lm0] + prodjf[n][lm0] * scales[lm0];
+                    evdwl += prod_real(fn_ylm[n][lm0], sume);
+                    fx += prod_real(fn_ylm_dx[n][lm0], sumf);
+                    fy += prod_real(fn_ylm_dy[n][lm0], sumf);
+                    fz += prod_real(fn_ylm_dz[n][lm0], sumf);
+               }
+            }
+            evdwl_array[ii][jj] = evdwl;
+            fx_array[ii][jj] = fx;
+            fy_array[ii][jj] = fy;
+            fz_array[ii][jj] = fz;
         }
     }
 }
