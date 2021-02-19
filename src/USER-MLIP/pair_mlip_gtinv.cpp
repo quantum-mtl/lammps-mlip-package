@@ -84,65 +84,8 @@ void PairMLIPGtinv::compute(int eflag, int vflag)
     #pragma omp parallel for schedule(guided)
     #endif
     for (int ii = 0; ii < inum; ii++) {
-        int i,type1;
-        double regc,valreal,valimag;
-        dc valtmp;
+        compute_anlm_for_each_atom(n_fn, n_lm_all, anlm, ii, prod_anlm_f, prod_anlm_e);
 
-        tagint *tag = atom->tag;
-        i = list->ilist[ii], type1 = types[tag[i]-1];
-
-        const int n_gtinv = pot.modelp.get_linear_term_gtinv().size();
-        const vector2dc &uniq 
-            = compute_anlm_uniq_products(type1, anlm[tag[i]-1]);
-        vector1d uniq_p;
-        if (pot.fp.maxp > 1){
-            uniq_p = compute_polynomial_model_uniq_products
-                (type1, anlm[tag[i]-1], uniq);
-        }
-
-        for (int type2 = 0; type2 < pot.fp.n_type; ++type2){
-            const int tc0 = type_comb[type1][type2];
-            for (int n = 0; n < n_fn; ++n){
-                for (int lm0 = 0; lm0 < n_lm_all; ++lm0){
-                    dc sumf(0.0), sume(0.0);
-                    for (auto& inv: pot.poly_gtinv.get_gtinv_info(tc0,lm0)){
-                        regc = 0.5 * pot.reg_coeffs[n * n_gtinv + inv.reg_i];
-                        if (inv.lmt_pi != -1){
-                            valtmp = regc * inv.coeff * uniq[n][inv.lmt_pi];
-                            valreal = valtmp.real() / inv.order;
-                            valimag = valtmp.imag() / inv.order;
-                            sumf += valtmp;
-                            sume += dc(valreal,valimag);
-                        }
-                        else {
-                            sumf += regc;
-                            sume += regc;
-                        }
-                    }
-                    // polynomial model correction
-                    if (pot.fp.maxp > 1){
-                        for (const auto& pi: 
-                            pot.poly_gtinv.get_polynomial_info(tc0,n,lm0)){
-                            regc = pot.reg_coeffs[pi.reg_i] * uniq_p[pi.comb_i];
-                            if (pi.lmt_pi != -1){
-                                valtmp = regc * pi.coeff * uniq[n][pi.lmt_pi];
-                                valreal = valtmp.real() / pi.order;
-                                valimag = valtmp.imag() / pi.order;
-                                sumf += valtmp;
-                                sume += dc(valreal, valimag);
-                            }
-                            else {
-                                sumf += regc;
-                                sume += regc / pi.order;
-                            }
-                        }
-                    }
-                    // end: polynomial model correction
-                    prod_anlm_f[tc0][tag[i]-1][n][lm0] = sumf;
-                    prod_anlm_e[tc0][tag[i]-1][n][lm0] = sume;
-                }
-            }
-        }
     }
 
     vector2d evdwl_array(inum),fx_array(inum),fy_array(inum),fz_array(inum);
@@ -284,6 +227,70 @@ void PairMLIPGtinv::compute(int eflag, int vflag)
                     ev_tally_xyz(i,j,nlocal,newton_pair,
                             evdwl,0.0,fx,fy,fz,delx,dely,delz);
                 }
+            }
+        }
+    }
+}
+
+//template<typename allocator>
+void PairMLIPGtinv::compute_anlm_for_each_atom(const int n_fn, const int n_lm_all, const barray4dc &anlm, int ii,
+                                               barray4dc &prod_anlm_f, barray4dc &prod_anlm_e) {
+    int i,type1;
+    double regc,valreal,valimag;
+    dc valtmp;
+
+    tagint *tag = atom->tag;
+    i = list->ilist[ii], type1 = types[tag[i] - 1];
+
+    const int n_gtinv = pot.modelp.get_linear_term_gtinv().size();
+    const vector2dc &uniq
+        = compute_anlm_uniq_products(type1, anlm[tag[i] - 1]);
+    vector1d uniq_p;
+    if (pot.fp.maxp > 1){
+        uniq_p = compute_polynomial_model_uniq_products
+            (type1, anlm[tag[i]-1], uniq);
+    }
+
+    for (int type2 = 0; type2 < pot.fp.n_type; ++type2){
+        const int tc0 = type_comb[type1][type2];
+        for (int n = 0; n < n_fn; ++n){
+            for (int lm0 = 0; lm0 < n_lm_all; ++lm0){
+                dc sumf(0.0), sume(0.0);
+                for (auto& inv: pot.poly_gtinv.get_gtinv_info(tc0, lm0)){
+                    regc = 0.5 * pot.reg_coeffs[n * n_gtinv + inv.reg_i];
+                    if (inv.lmt_pi != -1){
+                        valtmp = regc * inv.coeff * uniq[n][inv.lmt_pi];
+                        valreal = valtmp.real() / inv.order;
+                        valimag = valtmp.imag() / inv.order;
+                        sumf += valtmp;
+                        sume += dc(valreal,valimag);
+                    }
+                    else {
+                        sumf += regc;
+                        sume += regc;
+                    }
+                }
+                // polynomial model correction
+                if (pot.fp.maxp > 1){
+                    for (const auto& pi:
+                        pot.poly_gtinv.get_polynomial_info(tc0, n, lm0)){
+                        regc = pot.reg_coeffs[pi.reg_i] * uniq_p[pi.comb_i];
+                        if (pi.lmt_pi != -1){
+                            valtmp = regc * pi.coeff * uniq[n][pi.lmt_pi];
+                            valreal = valtmp.real() / pi.order;
+                            valimag = valtmp.imag() / pi.order;
+                            sumf += valtmp;
+                            sume += dc(valreal, valimag);
+                        }
+                        else {
+                            sumf += regc;
+                            sume += regc / pi.order;
+                        }
+                    }
+                }
+                // end: polynomial model correction
+                prod_anlm_f[tc0][tag[i]-1][n][lm0] = sumf;
+                prod_anlm_e[tc0][tag[i]-1][n][lm0] = sume;
             }
         }
     }

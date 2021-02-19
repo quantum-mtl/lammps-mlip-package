@@ -82,6 +82,11 @@ class PairMLIPGtinv : public Pair {
   template<typename T> std::vector<T> get_value_array
     (std::ifstream& input, const int& size);
 
+//    template<typename allocator>
+    void
+    compute_anlm_for_each_atom(const int n_fn, const int n_lm_all, const barray4dc &anlm, int ii,
+                               barray4dc &prod_anlm_f,
+                               barray4dc &prod_anlm_e);
 };
 
 }
