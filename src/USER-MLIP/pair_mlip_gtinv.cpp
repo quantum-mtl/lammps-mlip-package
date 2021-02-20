@@ -85,7 +85,6 @@ void PairMLIPGtinv::compute(int eflag, int vflag)
     #endif
     for (int ii = 0; ii < inum; ii++) {
         compute_anlm_for_each_atom(n_fn, n_lm_all, anlm, ii, prod_anlm_f, prod_anlm_e);
-
     }
 
     vector2d evdwl_array(inum),fx_array(inum),fy_array(inum),fz_array(inum);
@@ -109,7 +108,6 @@ void PairMLIPGtinv::compute(int eflag, int vflag)
     #endif
     for (int ii = 0; ii < inum; ii++) {
         compute_force_for_each_atom(prod_anlm_f, prod_anlm_e, scales, ii, evdwl_array, fx_array, fy_array, fz_array);
-
     }
 
     accumulate_force_for_all_atom(inum, nlocal, newton_pair, evdwl_array, fx_array, fy_array, fz_array);
@@ -148,7 +146,6 @@ void PairMLIPGtinv::accumulate_force_for_all_atom(int inum, int nlocal, int newt
     }
 }
 
-//template<typename allocator>
 void PairMLIPGtinv::compute_force_for_each_atom(const barray4dc &prod_anlm_f, const barray4dc &prod_anlm_e,
                                                 const vector1d &scales, int ii, vector2d &evdwl_array,
                                                 vector2d &fx_array, vector2d &fy_array, vector2d &fz_array) {
@@ -246,7 +243,6 @@ void PairMLIPGtinv::compute_force_for_each_atom(const barray4dc &prod_anlm_f, co
     }
 }
 
-//template<typename allocator>
 void PairMLIPGtinv::compute_anlm_for_each_atom(const int n_fn, const int n_lm_all, const barray4dc &anlm, int ii,
                                                barray4dc &prod_anlm_f, barray4dc &prod_anlm_e) {
     int i,type1;
@@ -269,7 +265,6 @@ void PairMLIPGtinv::compute_anlm_for_each_atom(const int n_fn, const int n_lm_al
                          n_gtinv, uniq, uniq_p);
 }
 
-//template<typename allocator>
 void
 PairMLIPGtinv::update_anlm_of_Iatom(const int n_fn, const int n_lm_all, barray4dc &prod_anlm_f, barray4dc &prod_anlm_e,
                                     int i, int type1, double regc, double valreal, double valimag, dc &valtmp,
@@ -282,7 +277,6 @@ PairMLIPGtinv::update_anlm_of_Iatom(const int n_fn, const int n_lm_all, barray4d
     }
 }
 
-//template<typename allocator>
 void PairMLIPGtinv::compute_anlm_loop_radial_indices(const int n_fn, const int n_lm_all, barray4dc &prod_anlm_f,
                                                      barray4dc &prod_anlm_e, int i, double regc, double valreal,
                                                      double valimag, dc &valtmp, const tagint *tag, const int n_gtinv,
@@ -294,7 +288,6 @@ void PairMLIPGtinv::compute_anlm_loop_radial_indices(const int n_fn, const int n
     }
 }
 
-//template<typename allocator>
 void
 PairMLIPGtinv::compute_anlm_loop_spherical_indices(const int n_lm_all, barray4dc &prod_anlm_f, barray4dc &prod_anlm_e, int i, double regc,
                                                    double valreal, double valimag, dc &valtmp, const tagint *tag, const int n_gtinv,
@@ -335,7 +328,7 @@ void PairMLIPGtinv::compute_anlm_polynomial_model_correction(double regc, double
                                                              dc &valtmp, const vector2dc &uniq, dc &sumf, dc &sume) {
     if (pot.fp.maxp > 1){
         for (const auto& pi:
-            pot.poly_gtinv.get_polynomial_info(tc0, n, lm0)){
+            pot.poly_gtinv.get_polynomial_info(tc0, n, lm0)){ // The number of executions of this loop can be extremely large.
             regc = pot.reg_coeffs[pi.reg_i] * uniq_p[pi.comb_i];
             if (pi.lmt_pi != -1){
                 valtmp = regc * pi.coeff * uniq[n][pi.lmt_pi];

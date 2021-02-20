@@ -82,13 +82,11 @@ class PairMLIPGtinv : public Pair {
   template<typename T> std::vector<T> get_value_array
     (std::ifstream& input, const int& size);
 
-//    template<typename allocator>
     void
     compute_anlm_for_each_atom(const int n_fn, const int n_lm_all, const barray4dc &anlm, int ii,
                                barray4dc &prod_anlm_f,
                                barray4dc &prod_anlm_e);
 
-//    template<typename allocator>
     void
     compute_force_for_each_atom(const barray4dc &prod_anlm_f, const barray4dc &prod_anlm_e, const vector1d &scales,
                                 int ii,
@@ -106,19 +104,18 @@ class PairMLIPGtinv : public Pair {
                            double &valimag,
                            dc &valtmp, const vector2dc &uniq, dc &sumf, dc &sume);
 
-//    template<typename allocator>
     void update_anlm_of_Iatom(const int n_fn, const int n_lm_all, barray4dc &prod_anlm_f, barray4dc &prod_anlm_e, int i,
                               int type1, double regc, double valreal, double valimag, dc &valtmp, const tagint *tag,
                               const int n_gtinv, const vector2dc &uniq, const vector1d &uniq_p);
 
-//    template<typename allocator>
     void
-    compute_anlm_loop_spherical_indices(const int n_lm_all, barray4dc &prod_anlm_f, barray4dc &prod_anlm_e, int i, double regc,
+    compute_anlm_loop_spherical_indices(const int n_lm_all, barray4dc &prod_anlm_f, barray4dc &prod_anlm_e, int i,
+                                        double regc,
                                         double valreal,
-                                        double valimag, dc &valtmp, const tagint *tag, const int n_gtinv, const vector2dc &uniq,
+                                        double valimag, dc &valtmp, const tagint *tag, const int n_gtinv,
+                                        const vector2dc &uniq,
                                         const vector1d &uniq_p, const int tc0, int n);
 
-//    template<typename allocator>
     void
     compute_anlm_loop_radial_indices(const int n_fn, const int n_lm_all, barray4dc &prod_anlm_f, barray4dc &prod_anlm_e,
                                      int i, double regc, double valreal, double valimag, dc &valtmp, const tagint *tag,
