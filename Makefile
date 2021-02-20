@@ -47,9 +47,12 @@ test-unit:  ## do unit testing
 	make -j 32; \
 	ctest -vv
 
-test-regression:  ## do regression test
-	cd test/regression; \
-		python3 regression.py
+test-regression: clean-lammps ## do regression test
+	sh ./docker/install.sh
+	@if [ -f ./lammps/src/lmp_serial ]; then \
+		cd test/regression; \
+			python3 regression.py; \
+	else echo "message: lmp_serial does not exist!"; fi
 
 clean-all: clean-lammps clean-test clean-docker  ## clean all artifacts
 
