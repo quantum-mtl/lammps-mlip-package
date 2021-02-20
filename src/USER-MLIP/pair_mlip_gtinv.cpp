@@ -265,20 +265,49 @@ void PairMLIPGtinv::compute_anlm_for_each_atom(const int n_fn, const int n_lm_al
             (type1, anlm[tag[i]-1], uniq);
     }
 
+    update_anlm_of_Iatom(n_fn, n_lm_all, prod_anlm_f, prod_anlm_e, i, type1, regc, valreal, valimag, valtmp, tag,
+                         n_gtinv, uniq, uniq_p);
+}
+
+//template<typename allocator>
+void
+PairMLIPGtinv::update_anlm_of_Iatom(const int n_fn, const int n_lm_all, barray4dc &prod_anlm_f, barray4dc &prod_anlm_e,
+                                    int i, int type1, double regc, double valreal, double valimag, dc &valtmp,
+                                    const tagint *tag, const int n_gtinv, const vector2dc &uniq,
+                                    const vector1d &uniq_p) {
     for (int type2 = 0; type2 < pot.fp.n_type; ++type2){
         const int tc0 = type_comb[type1][type2];
-        for (int n = 0; n < n_fn; ++n){
-            for (int lm0 = 0; lm0 < n_lm_all; ++lm0){
-                dc sumf(0.0), sume(0.0);
-                compute_anlm_main_term(n_gtinv, tc0, n, lm0, regc, valreal, valimag, valtmp, uniq, sumf, sume);
-                // polynomial model correction
-                coumpute_anlm_polynomial_model_correction(regc, valreal, valimag, uniq_p, tc0, n, lm0, valtmp, uniq,
-                                                          sumf, sume);
-                // end: polynomial model correction
-                prod_anlm_f[tc0][tag[i]-1][n][lm0] = sumf;
-                prod_anlm_e[tc0][tag[i]-1][n][lm0] = sume;
-            }
-        }
+        compute_anlm_loop_radial_indices(n_fn, n_lm_all, prod_anlm_f, prod_anlm_e, i, regc, valreal, valimag, valtmp,
+                                         tag, n_gtinv, uniq, uniq_p, tc0);
+    }
+}
+
+//template<typename allocator>
+void PairMLIPGtinv::compute_anlm_loop_radial_indices(const int n_fn, const int n_lm_all, barray4dc &prod_anlm_f,
+                                                     barray4dc &prod_anlm_e, int i, double regc, double valreal,
+                                                     double valimag, dc &valtmp, const tagint *tag, const int n_gtinv,
+                                                     const vector2dc &uniq, const vector1d &uniq_p, const int tc0) {
+    for (int n = 0; n < n_fn; ++n){
+        compute_anlm_loop_spherical_indices(n_lm_all, prod_anlm_f, prod_anlm_e, i, regc, valreal, valimag, valtmp,
+                                            tag, n_gtinv, uniq,
+                                            uniq_p, tc0, n);
+    }
+}
+
+//template<typename allocator>
+void
+PairMLIPGtinv::compute_anlm_loop_spherical_indices(const int n_lm_all, barray4dc &prod_anlm_f, barray4dc &prod_anlm_e, int i, double regc,
+                                                   double valreal, double valimag, dc &valtmp, const tagint *tag, const int n_gtinv,
+                                                   const vector2dc &uniq, const vector1d &uniq_p, const int tc0, int n) {
+    for (int lm0 = 0; lm0 < n_lm_all; ++lm0){
+        dc sumf(0.0), sume(0.0);
+        compute_anlm_main_term(n_gtinv, tc0, n, lm0, regc, valreal, valimag, valtmp, uniq, sumf, sume);
+        // polynomial model correction
+        compute_anlm_polynomial_model_correction(regc, valreal, valimag, uniq_p, tc0, n, lm0, valtmp, uniq,
+                                                 sumf, sume);
+        // end: polynomial model correction
+        prod_anlm_f[tc0][tag[i]-1][n][lm0] = sumf;
+        prod_anlm_e[tc0][tag[i]-1][n][lm0] = sume;
     }
 }
 
@@ -301,9 +330,9 @@ PairMLIPGtinv::compute_anlm_main_term(const int n_gtinv, const int tc0, int n, i
     }
 }
 
-void PairMLIPGtinv::coumpute_anlm_polynomial_model_correction(double regc, double valreal, double valimag,
-                                                              const vector1d &uniq_p, const int tc0, int n, int lm0,
-                                                              dc &valtmp, const vector2dc &uniq, dc &sumf, dc &sume) {
+void PairMLIPGtinv::compute_anlm_polynomial_model_correction(double regc, double valreal, double valimag,
+                                                             const vector1d &uniq_p, const int tc0, int n, int lm0,
+                                                             dc &valtmp, const vector2dc &uniq, dc &sumf, dc &sume) {
     if (pot.fp.maxp > 1){
         for (const auto& pi:
             pot.poly_gtinv.get_polynomial_info(tc0, n, lm0)){
