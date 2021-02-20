@@ -106,7 +106,9 @@ where $s_{i}$ denotes a element type of atom $i$.
 
 In practice, the order parameters are calculated with a neighbor list within a given cut off radius $r_{c}$,
 \begin{align}
-  a^{(i, s)}_{nlm} = \sum_{j \,s.t.\, r_{ij} \leq r_{c}, s_{j} = s} f_{n}(r_{ij}) Y_{lm}(\hat{\mathbf{r}_{ij}})^{\ast}.
+  a^{(i, s)}_{nlm} = \sum_{ j \in \mathcal{N}_{i,s} } f_{n}(r_{ij}) Y_{lm}(\hat{\mathbf{r}_{ij}})^{\ast}
+  \quad \mbox{where} \quad
+  \mathcal{N}_{i, s} \coloneqq \set{j}{ r_{ij} \leq r_{c}, s_{j} = s }.
 \end{align}
 Note that radial basis function $f_{n}(\cdot)$ is a real function.
 
@@ -134,7 +136,7 @@ Thus, we restrict the domain of $\mathcal{K}_{p}$ as \term{effective angular-ele
 \begin{align}
   \overline{\mathcal{K}}_{p}
   \coloneqq
-  \set{ [(l_{1}, t_{1}), \dots, (l_{p}, t_{p}) ] \in \mathcal{K}_{p} }{ t_{1} \cap \dots \cap t_{p} \neq \varnothing }.
+  \set{ [(l_{1}, t_{1}), \dots, (l_{p}, t_{p}) ] \in \mathcal{K}_{p} }{ t_{1} \cap \dots \cap t_{p} \neq \varnothing, \mathbf{C}^{l_{1} \dots l_{p}, \sigma_{\mathbf{k}}} \mbox{\, is nonzero}, \sum_{(l, \cdot) \in \mathbf{k}} l \mbox{\, is even} }.
 \end{align}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -178,6 +180,15 @@ Note that the weight $w_{ [\mathbf{f}_{1}, \dots, \mathbf{f}_{q}] }$ does not de
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Derivative}
 
+\term{partial structural feature}
+\begin{align}
+  z^{(i)}_{ n \mathbf{k} \sigma_{\mathbf{k}}, j, m_{j} }
+  \coloneqq
+  \sum_{ m_{1} \dots, \check{m_{j}} \dots m_{p} }
+    C^{l_{1} \dots l_{p}, \sigma_{\mathbf{k}} }_{m_{1} \dots m_{p}} a^{(i)}_{nl_{1}m_{1}, t_{1}} \dots \check{ a^{(i)}_{nl_{j}m_{j}, t_{j}} } \dots a^{(i)}_{n l_{p} m_{p}, t_{p}}
+\end{align}
+where $\mathbf{k} \in \overline{\mathcal{K}}_{p}, (l_{j}, t_{j}) \in \mathbf{k}$, and $|m_{j}| \leq l_{j}$.
+
 \begin{align}
   \partial E
   &= \sum_{i} \sum_{q} \sum_{ [\mathbf{f}_{1}, \dots, \mathbf{f}_{q}] \in \overline{\mathcal{P}}_{q} }
@@ -185,10 +196,21 @@ Note that the weight $w_{ [\mathbf{f}_{1}, \dots, \mathbf{f}_{q}] }$ does not de
   \partial d^{(i)}_{ [\mathbf{f}_{1}, \dots, \mathbf{f}_{q}] }
   &= \left( \partial d^{(i)}_{\mathbf{f}_{1}} \right) d^{(i)}_{\mathbf{f}_{2}} \dots d^{(i)}_{\mathbf{f}_{q}} + \dots \\
   \partial d^{(i)}_{n, \mathbf{k}, \sigma_{\mathbf{k}}}
-  &=
+  &= \sum_{ j = 1 }^{p} \sum_{ m = -l}^{l} z^{(i)}_{ n \mathbf{k} \sigma_{\mathbf{k}}, j, m } \partial a^{(i)}_{nlm, t} \\
+  \partial a^{(i)}_{nlm, [s, s']}
+  &= \begin{cases}
+    \partial a^{(i, s'')}_{nlm} & (\exists s'' \,s.t.\, [s_{i}, s''] = [s, s'] ) \\
+    0 & (\mbox{otherwise})
+  \end{cases} \\
+  \partial a^{(i, s)}_{nlm}
+  &= \sum_{ j \in \mathcal{N}_{i,s} }
+        \left( \partial f_{n}(r_{ij}) \right) Y_{lm}(\hat{\mathbf{r}_{ij}})^{\ast}
+        + f_{n}(r_{ij}) \left( \partial Y_{lm}(\hat{\mathbf{r}_{ij}}) \right)^{\ast}
 \end{align}
 
 \todo{permutation symmery of $ C^{l_{1} \dots l_{p}, \sigma_{\mathbf{k}} }_{m_{1} \dots m_{p}} $}
+
+\todo{Adjoint method}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % References
