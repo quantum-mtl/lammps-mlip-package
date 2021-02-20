@@ -31,6 +31,24 @@
 *.out
 *.app
 
+## Core latex/pdflatex auxiliary files:
+*.aux
+*.lof
+*.log
+*.lot
+*.fls
+*.out
+*.toc
+*.fmt
+*.fot
+*.cb
+*.cb2
+.*.lb
+*.dvi
+*.fdb_latexmk
+*.pdf
+*.synctex.gz
+
 lmp_serial
 perf.data*
 **/build/*

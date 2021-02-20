@@ -1,0 +1,199 @@
+\documentclass[a4paper, 11pt]{article}
+
+% add warnings
+\RequirePackage[l2tabu, orthodox]{nag}
+\usepackage[all, warning]{onlyamsmath}
+
+%codification of the document
+\usepackage[utf8]{inputenc}
+% font
+\usepackage{newtxtext}  % Times and Helvetica
+% mathematical features
+\usepackage{amsmath, amssymb}
+\usepackage{amsthm}
+\theoremstyle{definition}
+\usepackage{mathtools}
+% screen
+\usepackage{ascmac}
+% url
+\usepackage{url}
+% for images
+\usepackage{graphicx}
+% chemical formula
+\usepackage[version=3]{mhchem}
+% appendix
+\usepackage[toc,page]{appendix}
+% add bibliography in TOC
+\usepackage[nottoc]{tocbibind}
+% hyperlink
+\usepackage{hyperref}
+% color
+\usepackage{color}
+% page size and margins
+\usepackage{geometry}
+% citation
+\usepackage{cite}
+
+\usepackage{bm}
+
+% *matter for article class
+% https://tex.stackexchange.com/questions/154646/is-there-an-easy-way-to-get-the-frontmatter-mainmatter-and-backmatter-in-a-l
+\makeatletter
+\newcommand\frontmatter{%
+  \cleardoublepage
+  %\@mainmatterfalse
+  \pagenumbering{roman}}
+\newcommand\mainmatter{%
+  \cleardoublepage
+  % \@mainmattertrue
+  \pagenumbering{arabic}}
+\makeatother
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Macros
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% follow https://cdn.journals.aps.org/files/styleguide-pr.pdf
+\newcommand{\secref}[1]{Section~\ref{#1}}
+\newcommand{\appendixref}[1]{Appendix~\ref{#1}}
+\newcommand{\software}[1]{\texttt{#1}}
+
+\newcommand{\term}[1]{\textit{#1}}
+\newcommand{\todo}[1]{\textcolor{red}{TODO: #1}}
+\newcommand{\norm}[1]{\left\lVert#1\right\rVert}
+% https://zrbabbler.hatenablog.com/entry/20120411/1334151482
+\newcommand{\relmiddle}[1]{\mathrel{}\middle#1\mathrel{}}
+\newcommand{\set}[2]{\left\{ #1 \relmiddle| #2 \right\}}
+\newcommand{\Z}{\mathbb{Z}}
+\newcommand{\R}{\mathbb{R}}
+
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{corollary}{Corollary}[theorem]
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{definition}[theorem]{Definition}
+
+\title{Implementation Note on MLIP}
+\author{Kohei Shinohara}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Order Parameter}
+Consider a neighboring atomic density of \term{atom} $i$ between \term{element} $s$, $\rho^{(i, s)}(\mathbf{r})$, and expand it with basis functions,
+\begin{align}
+  \rho^{(i, s)}(\mathbf{r})
+    =: \sum_{n=1}^{n_{\mathrm{max}}} \sum_{l=0}^{l \leq l_{\mathrm{max}}} \sum_{m=-l}^{l} a^{(i, s)}_{nlm} f_{n}(r) Y_{lm}(\hat{\mathbf{r}}).
+\end{align}
+We refer the coefficients $a^{(i, s)}_{nlm}$ as \term{order parameters}.
+
+Let $\mathcal{S}$ be a set of pair elements
+\footnote{
+  A square bracket $[ \cdot ]$ indicate an unordered set.
+},
+\begin{align}
+  \mathcal{S} = \left\{ [A, A], [A, B], [B, B], \dots \right\}.
+\end{align}
+It is useful to generalize an order parameter with a set of pair elements, $[s, s'] \in \mathcal{S}$, as
+\begin{align}
+  a^{(i)}_{nlm, [s, s'] } \coloneqq
+  \begin{cases}
+    a^{(i, s'')}_{nlm} & (\exists s'' \,s.t.\, [s_{i}, s''] = [s, s'] ) \\
+    0 & (\mathrm{otherwise})
+  \end{cases},
+\end{align}
+where $s_{i}$ denotes a element type of atom $i$.
+
+In practice, the order parameters are calculated with a neighbor list within a given cut off radius $r_{c}$,
+\begin{align}
+  a^{(i, s)}_{nlm} = \sum_{j \,s.t.\, r_{ij} \leq r_{c}, s_{j} = s} f_{n}(r_{ij}) Y_{lm}(\hat{\mathbf{r}_{ij}})^{\ast}.
+\end{align}
+Note that radial basis function $f_{n}(\cdot)$ is a real function.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Structural Feature}
+Consider $p$th-order polynomial of $\{ a^{(i)}_{nlm, t}\}_{n, l, m, t \in \mathcal{S}}$ which is invariant with $O(3)$ actions.
+
+\term{angular-element pairs}
+\begin{align}
+  \mathcal{K}_{p}
+    = \set{ [ (l_{1}, t_{1}), \dots, (l_{p}, t_{p}) ] }{ l_{1}, \dots, l_{p} = 0, \dots, l_{\mathrm{max}}, t_{1}, \dots, t_{p} \in \mathcal{S} }
+\end{align}
+
+\term{Structural feature}
+\begin{align}
+  d^{(i)}_{n, \mathbf{k}, \sigma_{\mathbf{k}}}
+  \coloneqq \sum_{m_{1}=-l_{1}}^{l_{1}} \dots \sum_{m_{p}=-l_{p}}^{l_{p}} C^{l_{1} \dots l_{p}, \sigma_{\mathbf{k}} }_{m_{1} \dots m_{p}} a^{(i)}_{nl_{1}m_{1}, t_{1}} \dots a^{(i)}_{n l_{p} m_{p}, t_{p}}
+  \quad \mbox{where} \quad \mathbf{k} = [(l_{1}, t_{1}), \dots, (l_{p}, t_{p}) ] \in \mathcal{K}_{p}.
+\end{align}
+The index $\sigma_{\mathbf{k}}$ distinguishes several Irreps with the same unordered set of angular numbers $[l_{1}, \dots, l_{p}]$.
+We refer the tuple $(n, \mathbf{k}, \sigma_{k})$ as a \term{feature index}.
+
+Regardless of element type of atom $i$, when $t_{1} \cap \dots \cap t_{p} = \varnothing$, the structural feature becomes zero.
+Thus, we restrict the domain of $\mathcal{K}_{p}$ as \term{effective angular-element pairs},
+\begin{align}
+  \overline{\mathcal{K}}_{p}
+  \coloneqq
+  \set{ [(l_{1}, t_{1}), \dots, (l_{p}, t_{p}) ] \in \mathcal{K}_{p} }{ t_{1} \cap \dots \cap t_{p} \neq \varnothing }.
+\end{align}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Polynomial Feature}
+
+\begin{align}
+  \overline{\mathcal{K}} \coloneqq \overline{\mathcal{K}_{1}} \cup \overline{\mathcal{K}_{2}} \cup \dots
+\end{align}
+\todo{hyperparamter for $\overline{\mathcal{K}}$}
+
+\term{elements intersection}
+\begin{align}
+  e(\mathbf{k}) \coloneqq t_{1} \cap \dots \cap t_{p} \quad \mbox{where} \quad \mathbf{k} = [(l_{1}, t_{1}), \dots, (l_{p}, t_{p})] \in \overline{\mathcal{K}}.
+\end{align}
+
+\term{effective feature indices families}
+\begin{align}
+  \overline{\mathcal{P}}_{q}
+  \coloneqq \set{[(n_{1}, \mathbf{k}_{1}, \sigma_{\mathbf{k}_{1}}), \dots, (n_{q}, \mathbf{k}_{q}, \sigma_{\mathbf{k}_{q}})]}{ \mathbf{m}_{1}, \dots, \mathbf{k}_{q} \in \overline{\mathcal{K}}, e(\mathbf{k}_{1}) \cap \dots \cap e(\mathbf{k}_{q}) \neq \varnothing }
+\end{align}
+
+\term{polynomial feature}
+\begin{align}
+  d^{(i)}_{[(n_{1}, \mathbf{k}_{1}, \sigma_{\mathbf{k}_{1}}), \dots, (n_{q}, \mathbf{k}_{q}, \sigma_{\mathbf{k}_{q}})]}
+  &\coloneqq d^{(i)}_{ n_{1} \mathbf{k}_{1} \sigma_{\mathbf{k}_{1}} } \dots d^{(i)}_{ n_{q} \mathbf{k}_{q} \sigma_{\mathbf{k}_{q}} } \nonumber \\
+  &\mbox{where} \quad
+    [(n_{1}, \mathbf{k}_{1}, \sigma_{\mathbf{k}_{1}}), \dots, (n_{q}, \mathbf{k}_{q}, \sigma_{\mathbf{k}_{q}})] \in \overline{\mathcal{P}}_{q}
+\end{align}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Potential Energy Model}
+
+\begin{align}
+  E(\{ \mathbf{r}_{i} \}) &= \sum_{i=1}^{N} F \left( \{ d^{(i)}_{ [\mathbf{f}_{1}, \dots, \mathbf{f}_{q}] } \}_{[\mathbf{f}_{1}, \dots, \mathbf{f}_{q}] \in \overline{\mathcal{P}}_{q}}^{q=1,\dots} \right) \\
+  F \left( \{ d^{(i)}_{ [\mathbf{f}_{1}, \dots, \mathbf{f}_{q}] } \}_{[\mathbf{f}_{1}, \dots, \mathbf{f}_{q}] \in \overline{\mathcal{P}}_{q}}^{q=1,\dots} \right)
+  &= \sum_{q \geq 1} \sum_{ [\mathbf{f}_{1}, \dots, \mathbf{f}_{q}] \in \overline{\mathcal{P}}_{q} } w_{ [\mathbf{f}_{1}, \dots, \mathbf{f}_{q}] } d^{(i)}_{ [\mathbf{f}_{1}, \dots, \mathbf{f}_{q}] }
+\end{align}
+Note that the weight $w_{ [\mathbf{f}_{1}, \dots, \mathbf{f}_{q}] }$ does not depend on an element type of atom $i$.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Derivative}
+
+\begin{align}
+  \partial E
+  &= \sum_{i} \sum_{q} \sum_{ [\mathbf{f}_{1}, \dots, \mathbf{f}_{q}] \in \overline{\mathcal{P}}_{q} }
+        w_{ [\mathbf{f}_{1}, \dots, \mathbf{f}_{q}] } \partial d^{(i)}_{ [\mathbf{f}_{1}, \dots, \mathbf{f}_{q}] } \\
+  \partial d^{(i)}_{ [\mathbf{f}_{1}, \dots, \mathbf{f}_{q}] }
+  &= \left( \partial d^{(i)}_{\mathbf{f}_{1}} \right) d^{(i)}_{\mathbf{f}_{2}} \dots d^{(i)}_{\mathbf{f}_{q}} + \dots \\
+  \partial d^{(i)}_{n, \mathbf{k}, \sigma_{\mathbf{k}}}
+  &=
+\end{align}
+
+\todo{permutation symmery of $ C^{l_{1} \dots l_{p}, \sigma_{\mathbf{k}} }_{m_{1} \dots m_{p}} $}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% References
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% \bibliographystyle{unsrt}
+% \bibliography{reference}
+
+\end{document}
