@@ -70,8 +70,13 @@ class PairMLIPPair : public Pair {
   template<typename T> std::vector<T> get_value_array
     (std::ifstream& input, const int& size);
 
-    void accumulate_force_for_all_atom(int inum, int nlocal, int newton_pair, const vector2d &evdwl_array,
-                                       const vector2d &fpair_array);
+    void accumulate_energy_and_force_for_all_atom(int inum, int nlocal, int newton_pair, const vector2d &evdwl_array,
+                                                  const vector2d &fpair_array);
+
+    void compute_energy_and_force_for_each_atom(const vector3d &prod_all_f, const vector3d &prod_all_e, int ii,
+                                                vector2d &evdwl_array, vector2d &fpair_array);
+
+    void compute_partial_a_ll_for_each_atom(const vector2d &dn, int ii, vector3d &prod_all_f, vector3d &prod_all_e);
 };
 
 }

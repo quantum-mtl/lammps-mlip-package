@@ -121,30 +121,7 @@ void PairMLIPPair::compute(int eflag, int vflag)
         #pragma omp parallel for schedule(guided)
         #endif
         for (int ii = 0; ii < inum; ii++) {
-            int i,*ilist,type1;
-            double **x = atom->x;
-            tagint *tag = atom->tag;
-            ilist = list->ilist;
-
-            i = ilist[ii], type1 = types[tag[i]-1];
-            const int n_fn = pot.modelp.get_n_fn();
-            const vector1d &prodi 
-                = polynomial_model_uniq_products(dn[tag[i]-1]);
-            for (int type2 = 0; type2 < pot.fp.n_type; ++type2){
-                const int tc = type_comb[type1][type2];
-                vector1d vals_f(n_fn, 0.0), vals_e(n_fn, 0.0);
-                for (int n = 0; n < n_fn; ++n){
-                    double v;
-                    for (const auto& pi: 
-                        pot.poly_model.get_polynomial_info(tc,n)){
-                        v = prodi[pi.comb_i] * pot.reg_coeffs[pi.reg_i];
-                        vals_f[n] += v;
-                        vals_e[n] += v / pi.order;
-                    }
-                }
-                prod_all_f[tc][tag[i]-1] = vals_f;
-                prod_all_e[tc][tag[i]-1] = vals_e;
-            }
+            compute_partial_a_ll_for_each_atom(dn, ii, prod_all_f, prod_all_e);
         }
     }
     // end: first part of polynomial model correction 
@@ -154,58 +131,92 @@ void PairMLIPPair::compute(int eflag, int vflag)
     #pragma omp parallel for schedule(guided)
     #endif
     for (int ii = 0; ii < inum; ii++) {
-        int i,j,jnum,*jlist,type1,type2,sindex,tc;
-        double delx,dely,delz,dis,fpair,evdwl;
-        double **x = atom->x;
-        tagint *tag = atom->tag;
-
-        i = list->ilist[ii]; 
-        type1 = types[tag[i]-1];
-        jnum = list->numneigh[i]; 
-        jlist = list->firstneigh[i];
-
-        const int n_fn = pot.modelp.get_n_fn();
-        vector1d fn, fn_d;
-
-        evdwl_array[ii].resize(jnum);
-        fpair_array[ii].resize(jnum);
-        for (int jj = 0; jj < jnum; jj++) {
-            j = jlist[jj]; 
-            delx = x[i][0]-x[j][0];
-            dely = x[i][1]-x[j][1];
-            delz = x[i][2]-x[j][2];
-            dis = sqrt(delx*delx + dely*dely + delz*delz);
-
-            if (dis < pot.fp.cutoff){
-                type2 = types[tag[j]-1]; 
-                tc = type_comb[type1][type2];
-                sindex = tc * n_fn;
-
-                get_fn(dis, pot.fp, fn, fn_d);
-                fpair = dot(fn_d, pot.reg_coeffs, sindex);
-                evdwl = dot(fn, pot.reg_coeffs, sindex);
-
-                // polynomial model correction
-                if (pot.fp.maxp > 1){
-                    fpair += dot(fn_d, prod_all_f[tc][tag[i]-1], 0)
-                        +  dot(fn_d, prod_all_f[tc][tag[j]-1], 0);
-                    evdwl += dot(fn, prod_all_e[tc][tag[i]-1], 0)
-                        + dot(fn, prod_all_e[tc][tag[j]-1], 0);
-                }
-                // polynomial model correction: end
-
-                fpair *= - 1.0 / dis;
-                evdwl_array[ii][jj] = evdwl; 
-                fpair_array[ii][jj] = fpair; 
-            }
-        }
+        compute_energy_and_force_for_each_atom(prod_all_f, prod_all_e, ii, evdwl_array, fpair_array);
     }
 
-    accumulate_force_for_all_atom(inum, nlocal, newton_pair, evdwl_array, fpair_array);
+    accumulate_energy_and_force_for_all_atom(inum, nlocal, newton_pair, evdwl_array, fpair_array);
 }
 
-void PairMLIPPair::accumulate_force_for_all_atom(int inum, int nlocal, int newton_pair, const vector2d &evdwl_array,
-                                                 const vector2d &fpair_array) {
+void PairMLIPPair::compute_partial_a_ll_for_each_atom(const vector2d &dn, int ii, vector3d &prod_all_f, vector3d &prod_all_e) {
+    int i,*ilist,type1;
+    double **x = atom->x;
+    tagint *tag = atom->tag;
+    ilist = list->ilist;
+
+    i = ilist[ii], type1 = types[tag[i] - 1];
+    const int n_fn = pot.modelp.get_n_fn();
+    const vector1d &prodi
+        = polynomial_model_uniq_products(dn[tag[i] - 1]);
+    for (int type2 = 0; type2 < pot.fp.n_type; ++type2){
+        const int tc = type_comb[type1][type2];
+        vector1d vals_f(n_fn, 0.0), vals_e(n_fn, 0.0);
+        for (int n = 0; n < n_fn; ++n){
+            double v;
+            for (const auto& pi:
+                pot.poly_model.get_polynomial_info(tc, n)){
+                v = prodi[pi.comb_i] * pot.reg_coeffs[pi.reg_i];
+                vals_f[n] += v;
+                vals_e[n] += v / pi.order;
+            }
+        }
+        prod_all_f[tc][tag[i]-1] = vals_f;
+        prod_all_e[tc][tag[i]-1] = vals_e;
+    }
+}
+
+void
+PairMLIPPair::compute_energy_and_force_for_each_atom(const vector3d &prod_all_f, const vector3d &prod_all_e, int ii,
+                                                     vector2d &evdwl_array, vector2d &fpair_array) {
+    int i,j,jnum,*jlist,type1,type2,sindex,tc;
+    double delx,dely,delz,dis,fpair,evdwl;
+    double **x = atom->x;
+    tagint *tag = atom->tag;
+
+    i = list->ilist[ii];
+    type1 = types[tag[i] - 1];
+    jnum = list->numneigh[i];
+    jlist = list->firstneigh[i];
+
+    const int n_fn = pot.modelp.get_n_fn();
+    vector1d fn, fn_d;
+
+    evdwl_array[ii].resize(jnum);
+    fpair_array[ii].resize(jnum);
+    for (int jj = 0; jj < jnum; jj++) {
+        j = jlist[jj];
+        delx = x[i][0]-x[j][0];
+        dely = x[i][1]-x[j][1];
+        delz = x[i][2]-x[j][2];
+        dis = sqrt(delx*delx + dely*dely + delz*delz);
+
+        if (dis < pot.fp.cutoff){
+            type2 = types[tag[j] - 1];
+            tc = type_comb[type1][type2];
+            sindex = tc * n_fn;
+
+            get_fn(dis, pot.fp, fn, fn_d);
+            fpair = dot(fn_d, pot.reg_coeffs, sindex);
+            evdwl = dot(fn, pot.reg_coeffs, sindex);
+
+            // polynomial model correction
+            if (pot.fp.maxp > 1){
+                fpair += dot(fn_d, prod_all_f[tc][tag[i] - 1], 0)
+                         + dot(fn_d, prod_all_f[tc][tag[j] - 1], 0);
+                evdwl += dot(fn, prod_all_e[tc][tag[i] - 1], 0)
+                         + dot(fn, prod_all_e[tc][tag[j] - 1], 0);
+            }
+            // polynomial model correction: end
+
+            fpair *= - 1.0 / dis;
+            evdwl_array[ii][jj] = evdwl;
+            fpair_array[ii][jj] = fpair;
+        }
+    }
+}
+
+void PairMLIPPair::accumulate_energy_and_force_for_all_atom(int inum, int nlocal, int newton_pair,
+                                                            const vector2d &evdwl_array,
+                                                            const vector2d &fpair_array) {
     int i,j,jnum,*jlist;
     double fpair,evdwl,dis,delx,dely,delz;
     double **f = atom->f;
