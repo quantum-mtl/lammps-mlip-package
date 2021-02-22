@@ -201,12 +201,17 @@ void PairMLIPPair::compute(int eflag, int vflag)
         }
     }
 
+    accumulate_force_for_all_atom(inum, nlocal, newton_pair, evdwl_array, fpair_array);
+}
+
+void PairMLIPPair::accumulate_force_for_all_atom(int inum, int nlocal, int newton_pair, const vector2d &evdwl_array,
+                                                 const vector2d &fpair_array) {
     int i,j,jnum,*jlist;
     double fpair,evdwl,dis,delx,dely,delz;
     double **f = atom->f;
     double **x = atom->x;
     for (int ii = 0; ii < inum; ii++) {
-        i = list->ilist[ii]; 
+        i = list->ilist[ii];
         jnum = list->numneigh[i], jlist = list->firstneigh[i];
         for (int jj = 0; jj < jnum; jj++) {
             j = jlist[jj];
@@ -216,17 +221,17 @@ void PairMLIPPair::compute(int eflag, int vflag)
             dis = sqrt(delx*delx + dely*dely + delz*delz);
             if (dis < pot.fp.cutoff){
                 evdwl = evdwl_array[ii][jj];
-                fpair = fpair_array[ii][jj]; 
-                f[i][0] += fpair*delx; 
-                f[i][1] += fpair*dely; 
+                fpair = fpair_array[ii][jj];
+                f[i][0] += fpair*delx;
+                f[i][1] += fpair*dely;
                 f[i][2] += fpair*delz;
                 //            if (newton_pair || j < nlocal)
-                f[j][0] -= fpair*delx; 
-                f[j][1] -= fpair*dely; 
+                f[j][0] -= fpair*delx;
+                f[j][1] -= fpair*dely;
                 f[j][2] -= fpair*delz;
                 if (evflag) {
-                    ev_tally(i,j,nlocal,newton_pair,
-                            evdwl,0.0,fpair,delx,dely,delz);
+                    ev_tally(i, j, nlocal, newton_pair,
+                             evdwl, 0.0, fpair, delx, dely, delz);
                 }
             }
         }
