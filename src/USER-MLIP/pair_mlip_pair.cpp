@@ -80,41 +80,8 @@ void PairMLIPPair::compute(int eflag, int vflag)
         #pragma omp parallel for schedule(guided)
         #endif
         for (int ii = 0; ii < inum; ii++) {
-            int i,j,type1,type2,jnum,sindex,*ilist,*jlist;
-            double delx,dely,delz,dis;
-            double **x = atom->x;
-            tagint *tag = atom->tag;
+            compute_main_structural_feature_for_each_atom(dn, ii);
 
-            vector1d fn;
-            const int n_fn = pot.modelp.get_n_fn();
-
-            i = list->ilist[ii]; 
-            type1 = types[tag[i]-1];
-            jnum = list->numneigh[i]; 
-            jlist = list->firstneigh[i];
-            for (int jj = 0; jj < jnum; jj++) {
-                j = jlist[jj]; 
-                delx = x[i][0]-x[j][0];
-                dely = x[i][1]-x[j][1];
-                delz = x[i][2]-x[j][2];
-                dis = sqrt(delx*delx + dely*dely + delz*delz);
-
-                if (dis < pot.fp.cutoff){
-                    type2 = types[tag[j]-1]; 
-                    sindex = type_comb[type1][type2] * n_fn;
-                    get_fn(dis, pot.fp, fn);
-                    for (int n = 0; n < n_fn; ++n) {
-                        #ifdef _OPENMP
-                        #pragma omp atomic
-                        #endif
-                        dn[tag[i]-1][sindex+n] += fn[n];
-                        #ifdef _OPENMP
-                        #pragma omp atomic
-                        #endif
-                        dn[tag[j]-1][sindex+n] += fn[n];
-                    }
-                }
-            }
         }
         
         #ifdef _OPENMP
@@ -135,6 +102,44 @@ void PairMLIPPair::compute(int eflag, int vflag)
     }
 
     accumulate_energy_and_force_for_all_atom(inum, nlocal, newton_pair, evdwl_array, fpair_array);
+}
+
+void PairMLIPPair::compute_main_structural_feature_for_each_atom(vector2d &dn, int ii) {
+    int i,j,type1,type2,jnum,sindex,*ilist,*jlist;
+    double delx,dely,delz,dis;
+    double **x = atom->x;
+    tagint *tag = atom->tag;
+
+    vector1d fn;
+    const int n_fn = pot.modelp.get_n_fn();
+
+    i = list->ilist[ii];
+    type1 = types[tag[i] - 1];
+    jnum = list->numneigh[i];
+    jlist = list->firstneigh[i];
+    for (int jj = 0; jj < jnum; jj++) {
+        j = jlist[jj];
+        delx = x[i][0]-x[j][0];
+        dely = x[i][1]-x[j][1];
+        delz = x[i][2]-x[j][2];
+        dis = sqrt(delx*delx + dely*dely + delz*delz);
+
+        if (dis < pot.fp.cutoff){
+            type2 = types[tag[j] - 1];
+            sindex = type_comb[type1][type2] * n_fn;
+            get_fn(dis, pot.fp, fn);
+            for (int n = 0; n < n_fn; ++n) {
+                #ifdef _OPENMP
+                #pragma omp atomic
+                #endif
+                dn[tag[i]-1][sindex+n] += fn[n];
+                #ifdef _OPENMP
+                #pragma omp atomic
+                #endif
+                dn[tag[j]-1][sindex+n] += fn[n];
+            }
+        }
+    }
 }
 
 void PairMLIPPair::compute_partial_a_ll_for_each_atom(const vector2d &dn, int ii, vector3d &prod_all_f, vector3d &prod_all_e) {
