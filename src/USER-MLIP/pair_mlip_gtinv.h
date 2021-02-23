@@ -22,14 +22,9 @@ PairStyle(mlip_gtinv,PairMLIPGtinv)
 
 #include "pair.h"
 
-// TODO: remove unused headers
 #include "mlip_pymlcpp.h"
-#include "mlip_read_gtinv.h"
 #include "mlip_features.h"
 #include "mlip_model_params.h"
-#include "mlip_polynomial.h"
-#include "mlip_polynomial_gtinv.h"
-
 #include "mlip_model.h"
 
 namespace LAMMPS_NS {
