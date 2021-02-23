@@ -82,6 +82,44 @@ class PairMLIPGtinv : public Pair {
   template<typename T> std::vector<T> get_value_array
     (std::ifstream& input, const int& size);
 
+    void
+    compute_anlm_for_each_atom(const int n_fn, const int n_lm_all, const barray4dc &anlm, int ii,
+                               barray4dc &prod_anlm_f,
+                               barray4dc &prod_anlm_e);
+
+    void
+    compute_energy_and_force_for_each_atom(const barray4dc &prod_anlm_f, const barray4dc &prod_anlm_e, const vector1d &scales,
+                                           int ii,
+                                           vector2d &evdwl_array, vector2d &fx_array, vector2d &fy_array, vector2d &fz_array);
+
+    void accumulate_energy_and_force_for_all_atom(int inum, int nlocal, int newton_pair, const vector2d &evdwl_array,
+                                                  const vector2d &fx_array, const vector2d &fy_array, const vector2d &fz_array);
+
+    void compute_anlm_polynomial_model_correction(double regc, double valreal, double valimag, const vector1d &uniq_p,
+                                                  const int tc0, int n, int lm0, dc &valtmp, const vector2dc &uniq,
+                                                  dc &sumf, dc &sume);
+
+    void
+    compute_anlm_main_term(const int n_gtinv, const int tc0, int n, int lm0, double &regc, double &valreal,
+                           double &valimag,
+                           dc &valtmp, const vector2dc &uniq, dc &sumf, dc &sume);
+
+    void update_anlm_of_Iatom(const int n_fn, const int n_lm_all, barray4dc &prod_anlm_f, barray4dc &prod_anlm_e, int i,
+                              int type1, double regc, double valreal, double valimag, dc &valtmp, const tagint *tag,
+                              const int n_gtinv, const vector2dc &uniq, const vector1d &uniq_p);
+
+    void
+    compute_anlm_loop_spherical_indices(const int n_lm_all, barray4dc &prod_anlm_f, barray4dc &prod_anlm_e, int i,
+                                        double regc,
+                                        double valreal,
+                                        double valimag, dc &valtmp, const tagint *tag, const int n_gtinv,
+                                        const vector2dc &uniq,
+                                        const vector1d &uniq_p, const int tc0, int n);
+
+    void
+    compute_anlm_loop_radial_indices(const int n_fn, const int n_lm_all, barray4dc &prod_anlm_f, barray4dc &prod_anlm_e,
+                                     int i, double regc, double valreal, double valimag, dc &valtmp, const tagint *tag,
+                                     const int n_gtinv, const vector2dc &uniq, const vector1d &uniq_p, const int tc0);
 };
 
 }
