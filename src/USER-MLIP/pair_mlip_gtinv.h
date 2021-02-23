@@ -88,12 +88,12 @@ class PairMLIPGtinv : public Pair {
                                barray4dc &prod_anlm_e);
 
     void
-    compute_force_for_each_atom(const barray4dc &prod_anlm_f, const barray4dc &prod_anlm_e, const vector1d &scales,
-                                int ii,
-                                vector2d &evdwl_array, vector2d &fx_array, vector2d &fy_array, vector2d &fz_array);
+    compute_energy_and_force_for_each_atom(const barray4dc &prod_anlm_f, const barray4dc &prod_anlm_e, const vector1d &scales,
+                                           int ii,
+                                           vector2d &evdwl_array, vector2d &fx_array, vector2d &fy_array, vector2d &fz_array);
 
-    void accumulate_force_for_all_atom(int inum, int nlocal, int newton_pair, const vector2d &evdwl_array,
-                                       const vector2d &fx_array, const vector2d &fy_array, const vector2d &fz_array);
+    void accumulate_energy_and_force_for_all_atom(int inum, int nlocal, int newton_pair, const vector2d &evdwl_array,
+                                                  const vector2d &fx_array, const vector2d &fy_array, const vector2d &fz_array);
 
     void compute_anlm_polynomial_model_correction(double regc, double valreal, double valimag, const vector1d &uniq_p,
                                                   const int tc0, int n, int lm0, dc &valtmp, const vector2dc &uniq,

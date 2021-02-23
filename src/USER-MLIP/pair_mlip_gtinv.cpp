@@ -107,15 +107,16 @@ void PairMLIPGtinv::compute(int eflag, int vflag)
     #pragma omp parallel for schedule(guided)
     #endif
     for (int ii = 0; ii < inum; ii++) {
-        compute_force_for_each_atom(prod_anlm_f, prod_anlm_e, scales, ii, evdwl_array, fx_array, fy_array, fz_array);
+        compute_energy_and_force_for_each_atom(prod_anlm_f, prod_anlm_e, scales, ii, evdwl_array, fx_array, fy_array,
+                                               fz_array);
     }
 
-    accumulate_force_for_all_atom(inum, nlocal, newton_pair, evdwl_array, fx_array, fy_array, fz_array);
+    accumulate_energy_and_force_for_all_atom(inum, nlocal, newton_pair, evdwl_array, fx_array, fy_array, fz_array);
 }
 
-void PairMLIPGtinv::accumulate_force_for_all_atom(int inum, int nlocal, int newton_pair, const vector2d &evdwl_array,
-                                                  const vector2d &fx_array, const vector2d &fy_array,
-                                                  const vector2d &fz_array) {
+void PairMLIPGtinv::accumulate_energy_and_force_for_all_atom(int inum, int nlocal, int newton_pair, const vector2d &evdwl_array,
+                                                             const vector2d &fx_array, const vector2d &fy_array,
+                                                             const vector2d &fz_array) {
     int i,j,jnum,*jlist;
     double fx,fy,fz,evdwl,dis,delx,dely,delz;
     double **f = atom->f;
@@ -146,9 +147,9 @@ void PairMLIPGtinv::accumulate_force_for_all_atom(int inum, int nlocal, int newt
     }
 }
 
-void PairMLIPGtinv::compute_force_for_each_atom(const barray4dc &prod_anlm_f, const barray4dc &prod_anlm_e,
-                                                const vector1d &scales, int ii, vector2d &evdwl_array,
-                                                vector2d &fx_array, vector2d &fy_array, vector2d &fz_array) {
+void PairMLIPGtinv::compute_energy_and_force_for_each_atom(const barray4dc &prod_anlm_f, const barray4dc &prod_anlm_e,
+                                                           const vector1d &scales, int ii, vector2d &evdwl_array,
+                                                           vector2d &fx_array, vector2d &fy_array, vector2d &fz_array) {
     int i,j,jnum,*jlist,type1,type2,tc,m,lm1,lm2;
     double delx,dely,delz,dis,evdwl,fx,fy,fz,
            costheta,sintheta,cosphi,sinphi,coeff,cc;
