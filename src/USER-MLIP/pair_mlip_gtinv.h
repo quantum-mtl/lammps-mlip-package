@@ -22,12 +22,15 @@ PairStyle(mlip_gtinv,PairMLIPGtinv)
 
 #include "pair.h"
 
+// TODO: remove unused headers
 #include "mlip_pymlcpp.h"
 #include "mlip_read_gtinv.h"
 #include "mlip_features.h"
 #include "mlip_model_params.h"
 #include "mlip_polynomial.h"
 #include "mlip_polynomial_gtinv.h"
+
+#include "mlip_model.h"
 
 namespace LAMMPS_NS {
 
@@ -38,7 +41,7 @@ class PairMLIPGtinv : public Pair {
   virtual void compute(int, int);
   void settings(int, char **);
   virtual void coeff(int, char **);
-  
+
   virtual double init_one(int, int);
  /* virtual void init_style();
   */
@@ -46,22 +49,12 @@ class PairMLIPGtinv : public Pair {
  protected:
 
   virtual void allocate();
-
-  struct DataMLIP {
-      struct feature_params fp;
-      ModelParams modelp;
-      vector2i lm_info;
-      PolynomialGtinv poly_gtinv;
-      vector1d reg_coeffs;
-  };
-
-  std::vector<std::string> ele;
-  double cutmax;
-  vector1d mass;
   vector1i types;
-  vector2i type_comb;
 
-  struct DataMLIP pot;
+    struct MLIP_NS::DataMLIP pot;
+
+    double get_cutmax() const;
+    const vector2i& get_type_comb() const;
 
   barray4dc compute_anlm();
   vector2dc compute_anlm_uniq_products
@@ -71,16 +64,11 @@ class PairMLIPGtinv : public Pair {
 
 //  vector1d polynomial_model_uniq_products(const vector1d& dn);
   void polynomial_sum
-      (const vector1dc& uniq, const double& regc, 
-       const double& coeff, const double& order, const double& lmt_pi, 
+      (const vector1dc& uniq, const double& regc,
+       const double& coeff, const double& order, const double& lmt_pi,
        dc& sume, dc& sumf);
 
   double prod_real(const dc& val1, const dc& val2);
-
-  void read_pot(char *);
-  template<typename T> T get_value(std::ifstream& input);
-  template<typename T> std::vector<T> get_value_array
-    (std::ifstream& input, const int& size);
 
     void
     compute_anlm_for_each_atom(const int n_fn, const int n_lm_all, const barray4dc &anlm, int ii,
@@ -126,4 +114,3 @@ class PairMLIPGtinv : public Pair {
 
 #endif
 #endif
-
