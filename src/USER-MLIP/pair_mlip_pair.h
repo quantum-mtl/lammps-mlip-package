@@ -76,7 +76,7 @@ class PairMLIPPair : public Pair {
     void compute_energy_and_force_for_each_atom(const vector3d &prod_all_f, const vector3d &prod_all_e, int ii,
                                                 vector2d &evdwl_array, vector2d &fpair_array);
 
-    void compute_partial_a_ll_for_each_atom(const vector2d &dn, int ii, vector3d &prod_all_f, vector3d &prod_all_e);
+    void compute_partial_structural_feature_for_each_atom(const vector2d &dn, int ii, vector3d &prod_all_f, vector3d &prod_all_e);
 
     void compute_main_structural_feature_for_each_atom(vector2d &dn, int ii);
 };

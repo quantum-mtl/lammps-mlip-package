@@ -88,7 +88,7 @@ void PairMLIPPair::compute(int eflag, int vflag)
         #pragma omp parallel for schedule(guided)
         #endif
         for (int ii = 0; ii < inum; ii++) {
-            compute_partial_a_ll_for_each_atom(dn, ii, prod_all_f, prod_all_e);
+            compute_partial_structural_feature_for_each_atom(dn, ii, prod_all_f, prod_all_e);
         }
     }
     // end: first part of polynomial model correction 
@@ -142,7 +142,7 @@ void PairMLIPPair::compute_main_structural_feature_for_each_atom(vector2d &dn, i
     }
 }
 
-void PairMLIPPair::compute_partial_a_ll_for_each_atom(const vector2d &dn, int ii, vector3d &prod_all_f, vector3d &prod_all_e) {
+void PairMLIPPair::compute_partial_structural_feature_for_each_atom(const vector2d &dn, int ii, vector3d &prod_all_f, vector3d &prod_all_e) {
     int i,*ilist,type1;
     double **x = atom->x;
     tagint *tag = atom->tag;
