@@ -20,7 +20,7 @@
         http://www.gnu.org/copyleft/gpl.txt
 
 	    Header file for Readgtinv.cpp
-		
+
 ****************************************************************************/
 
 #ifndef __MLIP_READ_GTINV
@@ -30,27 +30,23 @@
 #include "mlip_pymlcpp.h"
 
 class Readgtinv{
-
     vector2i l_array;
     vector3i lm_array;
     vector2d coeffs;
-    
-    void screening
-        (const int& gtinv_order, const vector1i& gtinv_maxl, 
-         const std::vector<bool>& gtinv_sym, const int& n_type);
 
-    public: 
-
-    Readgtinv();
-    Readgtinv
-        (const int& gtinv_order, const vector1i& gtinv_maxl, 
-         const std::vector<bool>& gtinv_sym, const int& n_type);
-   ~Readgtinv();
+public:
+    Readgtinv() = default;
+    Readgtinv(const int& gtinv_order, const vector1i& gtinv_maxl,
+              const std::vector<bool>& gtinv_sym, const int& n_type);
+   ~Readgtinv() = default;
 
     const vector3i& get_lm_seq() const;
     const vector2i& get_l_comb() const;
     const vector2d& get_lm_coeffs() const;
 
+private:
+    void screening(const int& gtinv_order, const vector1i& gtinv_maxl,
+                   const std::vector<bool>& gtinv_sym, const int& n_type);
 };
 
 #endif

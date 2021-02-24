@@ -23,22 +23,16 @@
 
 #include "mlip_read_gtinv.h"
 
-Readgtinv::Readgtinv(){}
-Readgtinv::Readgtinv
-(const int& gtinv_order, const vector1i& gtinv_maxl, 
- const std::vector<bool>& gtinv_sym, const int& n_type){
-
+Readgtinv::Readgtinv(const int& gtinv_order, const vector1i& gtinv_maxl,
+                     const std::vector<bool>& gtinv_sym, const int& n_type){
     screening(gtinv_order, gtinv_maxl, gtinv_sym, n_type);
-
 }
 
-Readgtinv::~Readgtinv(){}
+/// @brief collect required info from GtinvData
+void Readgtinv::screening(const int& gtinv_order, const vector1i& gtinv_maxl,
+                          const std::vector<bool>& gtinv_sym, const int& n_type){
 
-void Readgtinv::screening
-(const int& gtinv_order, const vector1i& gtinv_maxl, 
- const std::vector<bool>& gtinv_sym, const int& n_type){
-
-    GtinvData data;
+    MLIP_NS::GtinvData data;
     const vector2i l_array_all = data.get_l_array();
     const vector3i m_array_all = data.get_m_array();
     const vector2d coeffs_all = data.get_coeffs();
@@ -76,4 +70,3 @@ void Readgtinv::screening
 const vector3i& Readgtinv::get_lm_seq() const{ return lm_array; }
 const vector2i& Readgtinv::get_l_comb() const{ return l_array; }
 const vector2d& Readgtinv::get_lm_coeffs() const{ return coeffs; }
-
