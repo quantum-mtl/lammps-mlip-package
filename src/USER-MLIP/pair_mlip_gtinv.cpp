@@ -308,7 +308,7 @@ PairMLIPGtinv::compute_anlm_loop_spherical_indices(const int n_lm_all, barray4dc
 void
 PairMLIPGtinv::compute_anlm_main_term(const int n_gtinv, const int tc0, int n, int lm0, double &regc, double &valreal,
                                       double &valimag, dc &valtmp, const vector2dc &uniq, dc &sumf, dc &sume) {
-    for (auto& inv: pot.get_poly_gtinv().get_gtinv_info(tc0, lm0)){
+    for (auto& inv: pot.get_poly_feature().get_gtinv_info(tc0, lm0)){
         regc = 0.5 * pot.get_reg_coeffs()[n * n_gtinv + inv.reg_i];
         if (inv.lmt_pi != -1){
             valtmp = regc * inv.coeff * uniq[n][inv.lmt_pi];
@@ -329,7 +329,7 @@ void PairMLIPGtinv::compute_anlm_polynomial_model_correction(double regc, double
                                                              dc &valtmp, const vector2dc &uniq, dc &sumf, dc &sume) {
     if (pot.get_feature_params().maxp > 1){
         for (const auto& pi:
-            pot.get_poly_gtinv().get_polynomial_info(tc0, n, lm0)){ // The number of executions of this loop can be extremely large.
+            pot.get_poly_feature().get_polynomial_info(tc0, n, lm0)){ // The number of executions of this loop can be extremely large.
             regc = pot.get_reg_coeffs()[pi.reg_i] * uniq_p[pi.comb_i];
             if (pi.lmt_pi != -1){
                 valtmp = regc * pi.coeff * uniq[n][pi.lmt_pi];
@@ -448,8 +448,8 @@ vector2dc PairMLIPGtinv::compute_anlm_uniq_products
 
     const int n_fn = pot.get_model_params().get_n_fn();
     const vector3i &type_comb_pair = pot.get_model_params().get_type_comb_pair();
-    const vector2i &uniq_prod = pot.get_poly_gtinv().get_uniq_prod();
-    const vector2i &lmtc_map = pot.get_poly_gtinv().get_lmtc_map();
+    const vector2i &uniq_prod = pot.get_poly_feature().get_uniq_prod();
+    const vector2i &lmtc_map = pot.get_poly_feature().get_lmtc_map();
 
     int lm, tc, type2;
     vector2dc prod(n_fn, vector1dc(uniq_prod.size(), 1.0));
@@ -484,7 +484,7 @@ vector1d PairMLIPGtinv::compute_polynomial_model_uniq_products
     for (int type2 = 0; type2 < n_type; ++type2){
         const int tc0 = get_type_comb()[type1][type2];
         for (int lm0 = 0; lm0 < n_lm_all; ++lm0){
-            for (const auto& t: pot.get_poly_gtinv().get_gtinv_info_poly(tc0, lm0)){
+            for (const auto& t: pot.get_poly_feature().get_gtinv_info_poly(tc0, lm0)){
                 if (t.lmt_pi == -1) {
                     for (int n = 0; n < n_fn; ++n){
                         dn[n * n_gtinv + t.reg_i] += anlm[type2][n][0].real();
@@ -501,7 +501,7 @@ vector1d PairMLIPGtinv::compute_polynomial_model_uniq_products
         }
     }
 
-    const auto &uniq_comb = pot.get_poly_gtinv().get_uniq_comb();
+    const auto &uniq_comb = pot.get_poly_feature().get_uniq_comb();
     vector1d uniq_prod(uniq_comb.size(), 0.5);
     for (int n = 0; n < uniq_comb.size(); ++n){
         for (const auto& c: uniq_comb[n]) uniq_prod[n] *= dn[c];
@@ -598,14 +598,10 @@ double PairMLIPGtinv::init_one(int i, int j)
 {
   if (setflag[i][j] == 0) error->all(FLERR,"All pair coeffs are not set");
 
-  return get_cutmax();
+  return pot.get_cutmax();
 }
 
 /* ---------------------------------------------------------------------- */
-double PairMLIPGtinv::get_cutmax() const {
-    return pot.get_feature_params().cutoff;
-}
-
 const vector2i& PairMLIPGtinv::get_type_comb() const {
     return pot.get_type_comb();
 }

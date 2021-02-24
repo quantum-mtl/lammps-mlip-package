@@ -46,9 +46,8 @@ class PairMLIPGtinv : public Pair {
   virtual void allocate();
   vector1i types;
 
-    struct MLIP_NS::DataMLIP pot;
+    MLIP_NS::DataMLIPBase<PolynomialGtinv> pot;
 
-    double get_cutmax() const;
     const vector2i& get_type_comb() const;
 
   barray4dc compute_anlm();

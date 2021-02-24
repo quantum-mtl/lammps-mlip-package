@@ -28,6 +28,7 @@ PairStyle(mlip_pair,PairMLIPPair)
 #include "mlip_model_params.h"
 #include "mlip_polynomial.h"
 #include "mlip_polynomial_pair.h"
+#include "mlip_model.h"
 
 namespace LAMMPS_NS {
 
@@ -38,7 +39,7 @@ class PairMLIPPair : public Pair {
   virtual void compute(int, int);
   void settings(int, char **);
   virtual void coeff(int, char **);
-  
+
   virtual double init_one(int, int);
  /* virtual void init_style();
   */
@@ -46,29 +47,14 @@ class PairMLIPPair : public Pair {
  protected:
 
   virtual void allocate();
+    vector1i types;
 
-  struct DataMLIP {
-      struct feature_params fp;
-      ModelParams modelp;
-      PolynomialPair poly_model;
-      vector1d reg_coeffs;
-  };
+    MLIP_NS::DataMLIPBase<PolynomialPair> pot;
 
-  struct DataMLIP pot;
-
-  std::vector<std::string> ele;
-  double cutmax;
-  vector1d mass;
-  vector1i types;
-  vector2i type_comb;
+    const vector2i& get_type_comb() const;
 
   vector1d polynomial_model_uniq_products(const vector1d& dn);
   double dot(const vector1d& a, const vector1d& b, const int& sindex);
-
-  void read_pot(char *);
-  template<typename T> T get_value(std::ifstream& input);
-  template<typename T> std::vector<T> get_value_array
-    (std::ifstream& input, const int& size);
 
     void accumulate_energy_and_force_for_all_atom(int inum, int nlocal, int newton_pair, const vector2d &evdwl_array,
                                                   const vector2d &fpair_array);
@@ -85,4 +71,3 @@ class PairMLIPPair : public Pair {
 
 #endif
 #endif
-
