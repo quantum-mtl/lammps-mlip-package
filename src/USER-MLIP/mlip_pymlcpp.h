@@ -63,23 +63,34 @@ using barray4dc = boost::multi_array<dc, 4>;
 template<typename T>
 void print_time(clock_t& start, clock_t& end, const T& memo){
 
-    std::cout << " elapsed time: " << memo << ": " 
+    std::cout << " elapsed time: " << memo << ": "
         << (double)(end-start) / CLOCKS_PER_SEC << " (sec.)" << std::endl;
 
 }
 
 struct feature_params {
+    /* number of elements */
     int n_type;
+    /* TODO */
     bool force;
     vector2d params;
+    /* cutoff radius for neighbor atoms */
     double cutoff;
+    /* type of a radial basis function: e.g. "gaussian" */
     std::string pair_type;
+    /* type of descriptors: "gtinv" or "pair"*/
     std::string des_type;
+    /* TODO */
     int model_type;
-    int maxp; 
+    /* maximum order of polynomial features */
+    int maxp;
+    /* maximum angular number */
     int maxl;
+    /* For gtinv, IrrepsIdx(int) -> [# of terms] -> {LMIdx for m1, ...} */
     vector3i lm_array;
+    /* For gtinv, IrrepsIdx(int) -> {l1, ...} */
     vector2i l_comb;
+    /* For gtinv, IrrepsIdx(int) -> vector<double> */
     vector2d lm_coeffs;
 };
 
