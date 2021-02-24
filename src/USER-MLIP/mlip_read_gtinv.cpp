@@ -50,7 +50,9 @@ void Readgtinv::screening(const int& gtinv_order, const vector1i& gtinv_maxl,
             }
             if (gtinv_sym[order - 2] == true) {
                 int n_ele = std::count(lcomb.begin(), lcomb.end(), lcomb[0]);
-                if (n_ele != order) is_required = false;
+                if (n_ele != order) {
+                    is_required = false;
+                }
             }
         }
 

@@ -568,7 +568,7 @@ void PairMLIPGtinv::coeff(int narg, char **arg)
     // read args that map atom types to elements in potential file
     // map[i] = which element the Ith atom type is, -1 if NULL
     std::vector<int> map(atom->ntypes);
-    auto ele = pot.get_elements();
+    const auto& ele = pot.get_elements();
     for (int i = 3; i < narg; i++) {
         for (int j = 0; j < ele.size(); j++){
             if (strcmp(arg[i],ele[j].c_str()) == 0){
@@ -578,7 +578,7 @@ void PairMLIPGtinv::coeff(int narg, char **arg)
         }
     }
 
-    auto mass = pot.get_masses();
+    const auto& mass = pot.get_masses();
     for (int i = 1; i <= atom->ntypes; ++i){
         atom->set_mass(FLERR,i,mass[map[i-1]]);
         for (int j = 1; j <= atom->ntypes; ++j) setflag[i][j] = 1;
