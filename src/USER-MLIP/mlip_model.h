@@ -54,8 +54,6 @@ public:
         ss.str("");
         ss.clear(std::stringstream::goodbit);
 
-        //struct DataMLIP pot;
-
         fp_.n_type = int(ele_.size());
         fp_.force = true;
 
@@ -75,7 +73,7 @@ public:
             vector1i gtinv_maxl = get_value_array<int>(input, size);
             std::vector<bool> gtinv_sym = get_value_array<bool>(input, size);
 
-            Readgtinv rgt(gtinv_order, gtinv_maxl, gtinv_sym, ele_.size());
+            Readgtinv rgt(gtinv_order, gtinv_maxl, gtinv_sym);
             fp_.lm_array = rgt.get_lm_seq();
             fp_.l_comb = rgt.get_l_comb();
             fp_.lm_coeffs = rgt.get_lm_coeffs();

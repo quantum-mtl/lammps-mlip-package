@@ -24,14 +24,16 @@
 #include "mlip_read_gtinv.h"
 
 Readgtinv::Readgtinv(const int& gtinv_order, const vector1i& gtinv_maxl,
-                     const std::vector<bool>& gtinv_sym, const int& n_type){
-    screening(gtinv_order, gtinv_maxl, gtinv_sym, n_type);
+                     const std::vector<bool>& gtinv_sym){
+    screening(gtinv_order, gtinv_maxl, gtinv_sym);
 }
 
 /// @brief collect required info from GtinvData
+/// @param[in] gtinv_order maximum angular order to be used
+/// @param[in] gtinv_maxl vector of l_max for order = 2, 3, ...
+/// @param[in] gtinv_sym
 void Readgtinv::screening(const int& gtinv_order, const vector1i& gtinv_maxl,
-                          const std::vector<bool>& gtinv_sym, const int& n_type){
-
+                          const std::vector<bool>& gtinv_sym){
     MLIP_NS::GtinvData data;
     const vector2i l_array_all = data.get_l_array();
     const vector3i m_array_all = data.get_m_array();
@@ -39,25 +41,27 @@ void Readgtinv::screening(const int& gtinv_order, const vector1i& gtinv_maxl,
 
     for (int i = 0; i < l_array_all.size(); ++i){
         const vector1i &lcomb = l_array_all[i];
-        bool tag(true);
-        const int order = lcomb.size();
-        const int maxl = *(lcomb.end()-1);
+        bool is_required(true);  // flag whether to fetch from GtinvData
+        const int order = lcomb.size();  // number of angular momemtums
+        const int maxl = *(lcomb.end() - 1);
         if (order > 1){
-            if (order > gtinv_order or maxl > gtinv_maxl[order-2]) tag = false;
-            if (gtinv_sym[order-2] == true){
+            if ((order > gtinv_order) or (maxl > gtinv_maxl[order - 2])) {
+                is_required = false;
+            }
+            if (gtinv_sym[order - 2] == true) {
                 int n_ele = std::count(lcomb.begin(), lcomb.end(), lcomb[0]);
-                if (n_ele != order) tag = false;
+                if (n_ele != order) is_required = false;
             }
         }
 
-        if (tag == true){
-            int l, m;
+        if (is_required == true){
             vector2i vec1(m_array_all[i].size(), vector1i(order));
             for (int j = 0; j < m_array_all[i].size(); ++j){
                 const auto &mcomb = m_array_all[i][j];
                 for (int k = 0; k < order; ++k){
-                    l = lcomb[k], m = mcomb[k];
-                    vec1[j][k] = l*l+l+m;
+                    int l = lcomb[k];
+                    int m = mcomb[k];
+                    vec1[j][k] = l * l + l + m;
                 }
             }
             l_array.emplace_back(lcomb);

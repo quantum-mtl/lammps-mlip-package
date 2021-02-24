@@ -35,10 +35,14 @@ class GtinvData{
     Table of sets of angular numbers corresponding to all symmetry Irreps.
     Note that some angular sets (e.g. {1, 1, 1, 1}) are duplicated because
     there may be several all symmetry Irreps with the same angular sets!
-    l_array_all: IrrepsIdx(int) -> {l1, l2, ...}
+    l_array_all: IrrepsTableIdx(int) -> {l1, l2, ...}
     */
     vector2i l_array_all;
-    /* m_array_all[i] is table of m-terms for l_array_all[i] */
+    /*
+    m_array_all[i] is table of m-terms for l_array_all[i]
+    m_array_all: IrrepsTableIdx(int) -> [# of terms] -> {m1, m2, ...}
+    For example, m_array_all[2] = {{-1, 1}, {0, 0}, {1, -1}}
+    */
     vector3i m_array_all;
     /*
     coeffs_all[i] is table of generalized Clebsch-Gordon coefficients for l_array_all[i]
