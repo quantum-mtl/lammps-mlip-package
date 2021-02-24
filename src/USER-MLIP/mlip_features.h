@@ -37,7 +37,7 @@ namespace bm = boost::math;
 void get_fn(const double& dis, const struct feature_params& fp, vector1d& fn);
 
 void get_fn
-(const double& dis, const struct feature_params& fp, 
+(const double& dis, const struct feature_params& fp,
  vector1d& fn, vector1d& fn_dr);
 
 // Spherical harmonics
@@ -53,6 +53,6 @@ dc spherical_harmonic_dtheta
 (const int& l, const int& m, const double& tan_theta,
  const dc& exp_imag_phi, const vector1dc& ylm, const int& lm);
 
-vector2i get_lm_info(const int& max_l);
+vector2i get_lm_info_table(const int& max_l);
 
 #endif

@@ -20,7 +20,7 @@
         http://www.gnu.org/copyleft/gpl.txt
 
 	    Header file for Readgtinv.cpp
-		
+
 ****************************************************************************/
 
 #ifndef __MLIP_READ_GTINV
@@ -30,27 +30,37 @@
 #include "mlip_pymlcpp.h"
 
 class Readgtinv{
-
+    /*
+    Table of sets of angular numbers corresponding to all symmetry Irreps to be used.
+    Note that some angular sets (e.g. {1, 1, 1, 1}) are duplicated because
+    there may be several all symmetry Irreps with the same angular sets!
+    l_array_all: IrrepsIdx(int) -> {l1, l2, ...}
+    */
     vector2i l_array;
+    /*
+    lm_array: IrrepsIdx(int) -> [# of terms] -> {LMIdx for m1, LMIdx for m2, ...}
+    where LMIdx is index for (l, m) = (0, 0), (1, -1), (1, 0), (1, 1), ...
+    */
     vector3i lm_array;
+    /*
+    coeffs_all[i] is table of generalized Clebsch-Gordon coefficients for l_array_all[i]
+    coeffs_all: IrrepsIdx(int) -> vector<double>
+    */
     vector2d coeffs;
-    
-    void screening
-        (const int& gtinv_order, const vector1i& gtinv_maxl, 
-         const std::vector<bool>& gtinv_sym, const int& n_type);
 
-    public: 
-
-    Readgtinv();
-    Readgtinv
-        (const int& gtinv_order, const vector1i& gtinv_maxl, 
-         const std::vector<bool>& gtinv_sym, const int& n_type);
-   ~Readgtinv();
+public:
+    Readgtinv() = default;
+    Readgtinv(const int& gtinv_order, const vector1i& gtinv_maxl,
+              const std::vector<bool>& gtinv_sym);
+   ~Readgtinv() = default;
 
     const vector3i& get_lm_seq() const;
     const vector2i& get_l_comb() const;
     const vector2d& get_lm_coeffs() const;
 
+private:
+    void screening(const int& gtinv_order, const vector1i& gtinv_maxl,
+                   const std::vector<bool>& gtinv_sym);
 };
 
 #endif

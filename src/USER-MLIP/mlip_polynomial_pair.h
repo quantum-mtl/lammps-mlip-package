@@ -39,10 +39,11 @@ class PolynomialPair{
     void set_uniq_comb(const vector2i& comb_all);
     void set_polynomial_array(const vector2i& combs, const int& sindex);
 
-    public: 
+    public:
 
     PolynomialPair();
-    PolynomialPair(const struct feature_params& fp, const ModelParams& modelp);
+    PolynomialPair(const struct feature_params& fp, const ModelParams& modelp,
+                   const vector2i& lm_info);
     ~PolynomialPair();
 
     const polyvec1& get_polynomial_info(const int& tc, const int& n0) const;

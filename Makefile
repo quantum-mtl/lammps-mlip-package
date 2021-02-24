@@ -58,6 +58,8 @@ clean-all: clean-lammps clean-test clean-docker  ## clean all artifacts
 
 clean-lammps:  ## clean lammps-related binaries
 	rm -f ./lammps/src/lmp_*
+	rm -f ./lammps/src/mlip_*
+	rm -rf ./lammps/src/USER-MLIP
 	rm -rf ./lammps/src/Obj_serial
 
 clean-test:  ## clean test-related binaries

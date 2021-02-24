@@ -24,8 +24,9 @@
 #include "mlip_polynomial_pair.h"
 
 PolynomialPair::PolynomialPair(){}
+/// @details lm_info is a dummy placeholder, actually not used in this constructor
 PolynomialPair::PolynomialPair
-(const struct feature_params& fp, const ModelParams& modelp){
+(const struct feature_params& fp, const ModelParams& modelp, const vector2i& lm_info){
 
     const int n_tc = modelp.get_type_comb_pair().size();
     const int n_fn = modelp.get_n_fn();
@@ -56,13 +57,13 @@ void PolynomialPair::set_uniq_comb(const vector2i& comb_all){
         vector1i comb_i_info(order-1);
         for (const auto& c: comb_all){
             for (const auto& seq: seq_array){
-                for (int i = 1; i < order; ++i) comb_i_info[i-1] = c[seq[i]]; 
+                for (int i = 1; i < order; ++i) comb_i_info[i-1] = c[seq[i]];
                 uniq_comb_set.insert(comb_i_info);
             }
         }
     }
 }
- 
+
 void PolynomialPair::set_polynomial_array
 (const vector2i& comb_all, const int& sindex){
 
@@ -74,7 +75,7 @@ void PolynomialPair::set_polynomial_array
         vector1i comb_i_info(order-1);
         for (const auto& c: comb_all){
             for (const auto& seq: seq_array){
-                for (int i = 1; i < order; ++i) comb_i_info[i-1] = c[seq[i]]; 
+                for (int i = 1; i < order; ++i) comb_i_info[i-1] = c[seq[i]];
                 cindex = poly_obj.find_comb(uniq_comb_set, comb_i_info, 0);
                 poly_obj.seq2tcn(c[seq[0]], tc0, n0);
                 struct PolynomialLammps pl = {n0, reg_i, cindex, order};
@@ -86,9 +87,7 @@ void PolynomialPair::set_polynomial_array
 }
 
 const polyvec1& PolynomialPair::get_polynomial_info
-(const int& tc, const int& n0) const{ 
-    return poly_array[tc][n0]; 
+(const int& tc, const int& n0) const{
+    return poly_array[tc][n0];
 }
 const vector2i& PolynomialPair::get_uniq_comb() const { return uniq_comb; }
-
-

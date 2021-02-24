@@ -55,7 +55,7 @@ void get_fn
     }
 }
 
-vector2i get_lm_info(const int& max_l){
+vector2i get_lm_info_table(const int& max_l){
 
     vector2i lm_comb;
     for (int l = 0; l < max_l + 1; ++l){

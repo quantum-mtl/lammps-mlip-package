@@ -10,8 +10,8 @@ TEST(MLIPFeaturesTest, cartesian_to_spherical) {
   ASSERT_DOUBLE_EQ(theta_phi[1], M_PI / 4.0);
 }
 
-TEST(MLIPFeaturesTest, get_lm_info) {
-  auto lm_info = get_lm_info(2);
+TEST(MLIPFeaturesTest, get_lm_info_table) {
+  auto lm_info = get_lm_info_table(2);
   // list of (l, m, offset + id of m, offset + id of -m) where m < 0, offset = l * l
   vector2i expect;
   expect.emplace_back(vector1i{0,  0,     0,     0});
@@ -25,7 +25,7 @@ TEST(MLIPFeaturesTest, get_lm_info) {
 
 TEST(MLIPFeaturesTest, get_ylm) {
   auto sph = vector1d{0, M_PI};
-  auto lm_info = get_lm_info(2);
+  auto lm_info = get_lm_info_table(2);
   vector1dc ylm;
   get_ylm(sph, lm_info, ylm);
   // sqrt{(2 * l + 1) / (4 * pi)} delta_{m, 0}
@@ -46,7 +46,7 @@ TEST(MLIPFeaturesTest, get_ylm) {
 
 TEST(MLIPFeaturesTest, get_ylm_dtheta) {
   auto sph = vector1d{M_PI / 2, M_PI};
-  auto lm_info = get_lm_info(1);
+  auto lm_info = get_lm_info_table(1);
   vector1dc ylm, ylm_theta;
   get_ylm(sph, lm_info, ylm, ylm_theta);
   auto expect = vector1dc {
@@ -64,7 +64,7 @@ TEST(MLIPFeaturesTest, get_ylm_dtheta) {
 // Broken test https://github.com/google/googletest/blob/master/docs/advanced.md#temporarily-disabling-tests
 TEST(MLIPFeaturesTest, DISABLED_get_ylm_dtheta_singular) {
   auto sph = vector1d{0, M_PI};
-  auto lm_info = get_lm_info(1);
+  auto lm_info = get_lm_info_table(1);
   vector1dc ylm, ylm_theta;
   get_ylm(sph, lm_info, ylm, ylm_theta);
   auto expect = vector1dc {
