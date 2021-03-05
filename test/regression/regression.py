@@ -10,7 +10,7 @@ L1_TOL = 1e-4  # tolerance for L1 displacements of two configurations
 class RegressionTest(unittest.TestCase):
 
     def setUp(self):
-        self.lammps_path = os.path.join(os.path.dirname(__file__), '..', '..', 'lmp_serial')
+        self.lammps_path = os.path.join(os.path.dirname(__file__), '..', '..', 'lmp_mlip_kokkos')
         potential_list = ['pair-60', 'gtinv-197']
         self.input_path = [p + '.in' for p in potential_list]
         self.dump_path = ['dump.atom.' + p for p in potential_list]

@@ -32,9 +32,11 @@
 *.app
 
 lmp_serial
+lmp_mlip_kokkos
 perf.data*
 **/build/*
 dump.atom
 log.lammps
 googletest
 *DS_Store
+.vscode

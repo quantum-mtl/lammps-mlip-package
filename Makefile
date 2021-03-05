@@ -48,11 +48,11 @@ test-unit:  ## do unit testing
 	ctest -vv
 
 test-regression: clean-lammps ## do regression test
-	sh ./docker/install.sh
-	@if [ -f ./lammps/src/lmp_serial ]; then \
+	sh ./docker/install.sh 32
+	@if [ -f ./lammps/src/lmp_mlip_kokkos ]; then \
 		cd test/regression; \
 			python3 regression.py; \
-	else echo "message: lmp_serial does not exist!"; fi
+	else echo "message: lmp_mlip_kokkos does not exist!"; fi
 
 clean-all: clean-lammps clean-test clean-docker  ## clean all artifacts
 
@@ -60,7 +60,7 @@ clean-lammps:  ## clean lammps-related binaries
 	rm -f ./lammps/src/lmp_*
 	rm -f ./lammps/src/mlip_*
 	rm -rf ./lammps/src/USER-MLIP
-	rm -rf ./lammps/src/Obj_serial
+	rm -rf ./lammps/src/Obj_mlip_kokkos
 
 clean-test:  ## clean test-related binaries
 	rm -rf test/build test/Testing test/bin test/lib
