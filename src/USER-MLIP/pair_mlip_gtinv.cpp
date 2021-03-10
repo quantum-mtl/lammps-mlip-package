@@ -64,27 +64,32 @@ void PairMLIPGtinv::compute(int eflag, int vflag)
 {
 
     vflag = 1;
-    if (eflag || vflag) ev_setup(eflag,vflag);
-    else evflag = 0;
+    if (eflag || vflag) {
+        ev_setup(eflag,vflag);
+    } else {
+        evflag = 0;
+    }
 
     int inum = list->inum;
     int nlocal = atom->nlocal;
     int newton_pair = force->newton_pair;
 
-    const int n_type_comb = pot.get_model_params().get_type_comb_pair().size();
+    const int n_type_comb = pot.get_model_params().get_type_comb_pair().size(); // equal to n_type * (n_type + 1) / 2
     const int n_fn = pot.get_model_params().get_n_fn();
     const int n_lm = pot.get_lm_info().size();
     const int n_lm_all = 2 * n_lm - pot.get_feature_params().maxl - 1;
 
+    // order paramter, (inum, n_type, n_fn, n_lm_all)
+    const barray4dc &anlm = compute_anlm();
+
+    // partial a_nlm products
     barray4dc prod_anlm_f(boost::extents[n_type_comb][inum][n_fn][n_lm_all]);
     barray4dc prod_anlm_e(boost::extents[n_type_comb][inum][n_fn][n_lm_all]);
-
-    const barray4dc &anlm = compute_anlm();
     #ifdef _OPENMP
     #pragma omp parallel for schedule(guided)
     #endif
     for (int ii = 0; ii < inum; ii++) {
-        compute_anlm_for_each_atom(n_fn, n_lm_all, anlm, ii, prod_anlm_f, prod_anlm_e);
+        compute_partial_anlm_product_for_each_atom(n_fn, n_lm_all, anlm, ii, prod_anlm_f, prod_anlm_e);
     }
 
     vector2d evdwl_array(inum),fx_array(inum),fy_array(inum),fz_array(inum);
@@ -107,16 +112,18 @@ void PairMLIPGtinv::compute(int eflag, int vflag)
     #pragma omp parallel for schedule(guided)
     #endif
     for (int ii = 0; ii < inum; ii++) {
-        compute_energy_and_force_for_each_atom(prod_anlm_f, prod_anlm_e, scales, ii, evdwl_array, fx_array, fy_array,
-                                               fz_array);
+        compute_energy_and_force_for_each_atom(prod_anlm_f, prod_anlm_e, scales, ii, evdwl_array,
+                                               fx_array, fy_array, fz_array);
     }
 
     accumulate_energy_and_force_for_all_atom(inum, nlocal, newton_pair, evdwl_array, fx_array, fy_array, fz_array);
 }
 
-void PairMLIPGtinv::accumulate_energy_and_force_for_all_atom(int inum, int nlocal, int newton_pair, const vector2d &evdwl_array,
+void PairMLIPGtinv::accumulate_energy_and_force_for_all_atom(int inum, int nlocal,
+                                                             int newton_pair, const vector2d &evdwl_array,
                                                              const vector2d &fx_array, const vector2d &fy_array,
-                                                             const vector2d &fz_array) {
+                                                             const vector2d &fz_array)
+{
     int i,j,jnum,*jlist;
     double fx,fy,fz,evdwl,dis,delx,dely,delz;
     double **f = atom->f;
@@ -244,76 +251,56 @@ void PairMLIPGtinv::compute_energy_and_force_for_each_atom(const barray4dc &prod
     }
 }
 
-void PairMLIPGtinv::compute_anlm_for_each_atom(const int n_fn, const int n_lm_all, const barray4dc &anlm, int ii,
+/// @param[out] prod_anlm_f
+/// @param[out] prod_anlm_e
+void PairMLIPGtinv::compute_partial_anlm_product_for_each_atom(const int n_fn, const int n_lm_all,
+                                               const barray4dc &anlm, int ii,
                                                barray4dc &prod_anlm_f, barray4dc &prod_anlm_e) {
-    int i,type1;
-    double regc,valreal,valimag;
-    dc valtmp;
-
     tagint *tag = atom->tag;
-    i = list->ilist[ii], type1 = types[tag[i] - 1];
+    int i = list->ilist[ii];
+    int type1 = types[tag[i] - 1];
 
+    // precompute partial a_nlm product for linear terms
     const int n_gtinv = pot.get_model_params().get_linear_term_gtinv().size();
-    const vector2dc &uniq
-        = compute_anlm_uniq_products(type1, anlm[tag[i] - 1]);
+    const vector2dc &uniq = compute_anlm_uniq_products(type1, anlm[tag[i] - 1]);
+
+    // precompute partial a_nlm product for polynomial terms
     vector1d uniq_p;
     if (pot.get_feature_params().maxp > 1){
-        uniq_p = compute_polynomial_model_uniq_products
-            (type1, anlm[tag[i]-1], uniq);
+        uniq_p = compute_polynomial_model_uniq_products(type1, anlm[tag[i]-1], uniq);
     }
 
-    update_anlm_of_Iatom(n_fn, n_lm_all, prod_anlm_f, prod_anlm_e, i, type1, regc, valreal, valimag, valtmp, tag,
-                         n_gtinv, uniq, uniq_p);
-}
-
-void
-PairMLIPGtinv::update_anlm_of_Iatom(const int n_fn, const int n_lm_all, barray4dc &prod_anlm_f, barray4dc &prod_anlm_e,
-                                    int i, int type1, double regc, double valreal, double valimag, dc &valtmp,
-                                    const tagint *tag, const int n_gtinv, const vector2dc &uniq,
-                                    const vector1d &uniq_p) {
+    // compute prod_anlm_f and prod_anlm_e
     for (int type2 = 0; type2 < pot.get_feature_params().n_type; ++type2){
         const int tc0 = get_type_comb()[type1][type2];
-        compute_anlm_loop_radial_indices(n_fn, n_lm_all, prod_anlm_f, prod_anlm_e, i, regc, valreal, valimag, valtmp,
-                                         tag, n_gtinv, uniq, uniq_p, tc0);
+
+        for (int n = 0; n < n_fn; ++n){
+            for (int lm0 = 0; lm0 < n_lm_all; ++lm0){
+                dc sumf(0.0), sume(0.0);
+                compute_anlm_linear_term(n_gtinv, tc0, n, lm0, uniq, sumf, sume);
+                // polynomial model correction for sumf and sume
+                compute_anlm_polynomial_model_correction(uniq_p, tc0, n, lm0, uniq, sumf, sume);
+
+                prod_anlm_f[tc0][tag[i]-1][n][lm0] = sumf;
+                prod_anlm_e[tc0][tag[i]-1][n][lm0] = sume;
+            }
+        }
+
     }
 }
 
-void PairMLIPGtinv::compute_anlm_loop_radial_indices(const int n_fn, const int n_lm_all, barray4dc &prod_anlm_f,
-                                                     barray4dc &prod_anlm_e, int i, double regc, double valreal,
-                                                     double valimag, dc &valtmp, const tagint *tag, const int n_gtinv,
-                                                     const vector2dc &uniq, const vector1d &uniq_p, const int tc0) {
-    for (int n = 0; n < n_fn; ++n){
-        compute_anlm_loop_spherical_indices(n_lm_all, prod_anlm_f, prod_anlm_e, i, regc, valreal, valimag, valtmp,
-                                            tag, n_gtinv, uniq,
-                                            uniq_p, tc0, n);
-    }
-}
-
-void
-PairMLIPGtinv::compute_anlm_loop_spherical_indices(const int n_lm_all, barray4dc &prod_anlm_f, barray4dc &prod_anlm_e, int i, double regc,
-                                                   double valreal, double valimag, dc &valtmp, const tagint *tag, const int n_gtinv,
-                                                   const vector2dc &uniq, const vector1d &uniq_p, const int tc0, int n) {
-    for (int lm0 = 0; lm0 < n_lm_all; ++lm0){
-        dc sumf(0.0), sume(0.0);
-        compute_anlm_main_term(n_gtinv, tc0, n, lm0, regc, valreal, valimag, valtmp, uniq, sumf, sume);
-        // polynomial model correction
-        compute_anlm_polynomial_model_correction(regc, valreal, valimag, uniq_p, tc0, n, lm0, valtmp, uniq,
-                                                 sumf, sume);
-        // end: polynomial model correction
-        prod_anlm_f[tc0][tag[i]-1][n][lm0] = sumf;
-        prod_anlm_e[tc0][tag[i]-1][n][lm0] = sume;
-    }
-}
-
-void
-PairMLIPGtinv::compute_anlm_main_term(const int n_gtinv, const int tc0, int n, int lm0, double &regc, double &valreal,
-                                      double &valimag, dc &valtmp, const vector2dc &uniq, dc &sumf, dc &sume) {
+/// @param[out] sumf
+/// @param[out] sume
+void PairMLIPGtinv::compute_anlm_linear_term(const int n_gtinv, const int tc0, int n, int lm0,
+                                             const vector2dc &uniq,
+                                             dc &sumf, dc &sume)
+{
     for (auto& inv: pot.get_poly_feature().get_gtinv_info(tc0, lm0)){
-        regc = 0.5 * pot.get_reg_coeffs()[n * n_gtinv + inv.reg_i];
+        double regc = 0.5 * pot.get_reg_coeffs()[n * n_gtinv + inv.reg_i];
         if (inv.lmt_pi != -1){
-            valtmp = regc * inv.coeff * uniq[n][inv.lmt_pi];
-            valreal = valtmp.real() / inv.order;
-            valimag = valtmp.imag() / inv.order;
+            dc valtmp = regc * inv.coeff * uniq[n][inv.lmt_pi];
+            double valreal = valtmp.real() / inv.order;
+            double valimag = valtmp.imag() / inv.order;
             sumf += valtmp;
             sume += dc(valreal,valimag);
         }
@@ -324,33 +311,44 @@ PairMLIPGtinv::compute_anlm_main_term(const int n_gtinv, const int tc0, int n, i
     }
 }
 
-void PairMLIPGtinv::compute_anlm_polynomial_model_correction(double regc, double valreal, double valimag,
-                                                             const vector1d &uniq_p, const int tc0, int n, int lm0,
-                                                             dc &valtmp, const vector2dc &uniq, dc &sumf, dc &sume) {
-    if (pot.get_feature_params().maxp > 1){
-        for (const auto& pi:
-            pot.get_poly_feature().get_polynomial_info(tc0, n, lm0)){ // The number of executions of this loop can be extremely large.
-            regc = pot.get_reg_coeffs()[pi.reg_i] * uniq_p[pi.comb_i];
-            if (pi.lmt_pi != -1){
-                valtmp = regc * pi.coeff * uniq[n][pi.lmt_pi];
-                valreal = valtmp.real() / pi.order;
-                valimag = valtmp.imag() / pi.order;
-                sumf += valtmp;
-                sume += dc(valreal, valimag);
-            }
-            else {
-                sumf += regc;
-                sume += regc / pi.order;
-            }
+/// @param[out] sumf
+/// @param[out] sume
+void PairMLIPGtinv::compute_anlm_polynomial_model_correction(const vector1d &uniq_p,
+                                                             const int tc0, int n, int lm0,
+                                                             const vector2dc &uniq,
+                                                             dc& sumf, dc& sume)
+{
+    if (pot.get_feature_params().maxp <= 1){
+        return;
+    }
+
+    for (const auto& pi: pot.get_poly_feature().get_polynomial_info(tc0, n, lm0)){ // The number of executions of this loop can be extremely large.
+        double regc = pot.get_reg_coeffs()[pi.reg_i] * uniq_p[pi.comb_i];
+        if (pi.lmt_pi != -1){
+            dc valtmp = regc * pi.coeff * uniq[n][pi.lmt_pi];
+            double valreal = valtmp.real() / pi.order;
+            double valimag = valtmp.imag() / pi.order;
+            sumf += valtmp;
+            sume += dc(valreal, valimag);
+        }
+        else {
+            sumf += regc;
+            sume += regc / pi.order;
         }
     }
 }
 
 
+/// @brief compute order parameters a_{nlm}
+/// @return anlm (inum, n_type, n_fn, n_lm_all)
+///         n_type is # of elements. n_fn is # of basis functions.
+///         n_lm_all is # of (l, m), equal to (l_max + 1)^2
 barray4dc PairMLIPGtinv::compute_anlm(){
 
-    const int n_fn = pot.get_model_params().get_n_fn(), n_lm = pot.get_lm_info().size(),
-        n_lm_all = 2 * n_lm - pot.get_feature_params().maxl - 1, n_type = pot.get_feature_params().n_type;
+    const int n_fn = pot.get_model_params().get_n_fn();
+    const int n_lm = pot.get_lm_info().size();
+    const int n_lm_all = 2 * n_lm - pot.get_feature_params().maxl - 1;
+    const int n_type = pot.get_feature_params().n_type;
 
     int inum = list->inum;
     int nlocal = atom->nlocal;
@@ -443,26 +441,28 @@ barray4dc PairMLIPGtinv::compute_anlm(){
 
 }
 
-vector2dc PairMLIPGtinv::compute_anlm_uniq_products
-(const int& type1, const barray3dc& anlm){
+/// @return prod vector2dc(n_fn, vector1dc: # of uniq products for anlm_i[][n][])
+vector2dc PairMLIPGtinv::compute_anlm_uniq_products(const int& type1, const barray3dc& anlm_i){
 
     const int n_fn = pot.get_model_params().get_n_fn();
     const vector3i &type_comb_pair = pot.get_model_params().get_type_comb_pair();
     const vector2i &uniq_prod = pot.get_poly_feature().get_uniq_prod();
     const vector2i &lmtc_map = pot.get_poly_feature().get_lmtc_map();
 
-    int lm, tc, type2;
     vector2dc prod(n_fn, vector1dc(uniq_prod.size(), 1.0));
     for (int i = 0; i < uniq_prod.size(); ++i){
         for (const auto &seq: uniq_prod[i]){
-            lm = lmtc_map[seq][0], tc = lmtc_map[seq][1];
+            int lm = lmtc_map[seq][0];
+            int tc = lmtc_map[seq][1];
             if (type_comb_pair[tc][type1].size() > 0) {
-                type2 = type_comb_pair[tc][type1][0];
-                for (int n = 0; n < n_fn; ++n)
-                    prod[n][i] *= anlm[type2][n][lm];
-            }
-            else {
-                for (int n = 0; n < n_fn; ++n) prod[n][i] = 0.0;
+                int type2 = type_comb_pair[tc][type1][0];
+                for (int n = 0; n < n_fn; ++n) {
+                    prod[n][i] *= anlm_i[type2][n][lm];
+                }
+            } else {
+                for (int n = 0; n < n_fn; ++n) {
+                    prod[n][i] = 0.0;
+                }
                 break;
             }
         }
@@ -470,8 +470,11 @@ vector2dc PairMLIPGtinv::compute_anlm_uniq_products
     return prod;
 }
 
-vector1d PairMLIPGtinv::compute_polynomial_model_uniq_products
-(const int& type1, const barray3dc& anlm, const vector2dc& uniq){
+/// @return uniq_prod vector<double>(uniq_comb.size())
+vector1d PairMLIPGtinv::compute_polynomial_model_uniq_products(const int& type1,
+                                                               const barray3dc& anlm_i,
+                                                               const vector2dc& uniq)
+{
 
     const int n_fn = pot.get_model_params().get_n_fn();
     const int n_des = pot.get_model_params().get_n_des();
@@ -486,14 +489,14 @@ vector1d PairMLIPGtinv::compute_polynomial_model_uniq_products
         for (int lm0 = 0; lm0 < n_lm_all; ++lm0){
             for (const auto& t: pot.get_poly_feature().get_gtinv_info_poly(tc0, lm0)){
                 if (t.lmt_pi == -1) {
-                    for (int n = 0; n < n_fn; ++n){
-                        dn[n * n_gtinv + t.reg_i] += anlm[type2][n][0].real();
+                    for (int n = 0; n < n_fn; ++n) {
+                        dn[n * n_gtinv + t.reg_i] += anlm_i[type2][n][0].real();
                     }
                 }
                 else {
-                    for (int n = 0; n < n_fn; ++n){
+                    for (int n = 0; n < n_fn; ++n) {
                         dn[n * n_gtinv + t.reg_i] += t.coeff / t.order
-                            * prod_real(anlm[type2][n][lm0],uniq[n][t.lmt_pi]);
+                            * prod_real(anlm_i[type2][n][lm0],uniq[n][t.lmt_pi]);
                     }
                 }
             }
@@ -502,14 +505,17 @@ vector1d PairMLIPGtinv::compute_polynomial_model_uniq_products
     }
 
     const auto &uniq_comb = pot.get_poly_feature().get_uniq_comb();
-    vector1d uniq_prod(uniq_comb.size(), 0.5);
-    for (int n = 0; n < uniq_comb.size(); ++n){
-        for (const auto& c: uniq_comb[n]) uniq_prod[n] *= dn[c];
+    vector1d uniq_prod(uniq_comb.size(), 0.5);  // TODO: why initialize with 0.5?
+    for (int n = 0; n < uniq_comb.size(); ++n) {
+        for (const auto& c: uniq_comb[n]) {
+            uniq_prod[n] *= dn[c];
+        }
     }
 
     return uniq_prod;
 }
 
+/// @brief real part of complex products of val1 and val2
 double PairMLIPGtinv::prod_real(const dc& val1, const dc& val2){
     return val1.real() * val2.real() - val1.imag() * val2.imag();
 }

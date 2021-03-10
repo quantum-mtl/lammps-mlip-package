@@ -2,7 +2,7 @@
 
 # settings for MLIP on UBUNTU18.04
 
-mlip_INC = -DNDEBUG -fopenmp -std=c++11 -mtune=native -march=native -I/usr/include -Wall -Wextra
+mlip_INC = -DNDEBUG -fopenmp -std=c++14 -mtune=native -march=native -I/usr/include -Wall -Wextra
 mlip_PATH = -L../../lib/mlip
 
 # boost library may be included

@@ -33,10 +33,10 @@ jobs:
     - name: Install dependancies
       run: |
         sudo apt update
-        sudo apt install -y cmake libboost-all-dev gcc g++ python3
+        sudo apt install -y cmake libboost-all-dev gcc g++ libopenmpi-dev python3
     - name: make
       run: |
-        sh docker/install.sh
+        sh docker/install.sh 4
     - name: regression test
       run: |
         cd test/regression
