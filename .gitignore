@@ -31,8 +31,7 @@
 *.out
 *.app
 
-lmp_serial
-lmp_mlip_kokkos
+lmp_*
 perf.data*
 **/build/*
 dump.atom
