@@ -41,19 +41,31 @@ make serial -j 36
 ```
 
 ### (2) Run lammps-mlip in docker
-1. build and run a docker container
+1. Serial or OpenMP
 ```shell
 docker build -t lammps -f docker/Dockerfile .
 docker run -it -v $(PWD):/workspace -t lammps
 ```
 
-in `lammps` container
+In `lammps` container (replace `8` with the appropriate number of cores)
 ```
 cd /workspace
-./docker/install.sh
+./docker/install.sh 8
 ```
-Now `lmp_serial` is built under `/workspace`.
+Now `lmp_mlip_kokkos` is built under `/workspace`.
 
+2. Cuda
+```shell
+docker build -t lammps-gpu -f docker/Dockerfile.gpu .
+docker run -it -v $(PWD):/workspace -t lammps-gpu
+```
+
+In `lammps-gpu` container (replace `8` with the appropriate number of cores)
+```
+cd /workspace
+KOKKOS_DEVICES=Cuda ./docker/install.sh 8
+```
+Now `lmp_mlip_kokkos` is built under `/workspace`.
 
 ## Lammps input commands to specify a machine learning potential
 
@@ -71,7 +83,7 @@ pair_coeff * * pyml.lammps.mlip Ti Al
 ## Examples
 ```
 cd example
-./../lmp_serial -in in.mlip
+./../lmp_mlip_kokkos -in in.mlip
 ```
 
 ## Development
@@ -109,7 +121,7 @@ make test-regression
 ### performance
 - perf
 ```
-sudo perf record --call-graph lbr ./../../lmp_serial -in in.mlip
+sudo perf record --call-graph lbr ./../../lmp_mlip_kokkos -in in.mlip
 sudo perf report
 ```
 

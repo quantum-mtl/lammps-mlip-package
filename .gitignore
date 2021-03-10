@@ -31,7 +31,7 @@
 *.out
 *.app
 
-lmp_serial
+lmp_*
 perf.data*
 **/build/*
 dump.atom

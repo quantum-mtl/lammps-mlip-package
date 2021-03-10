@@ -1,0 +1,19 @@
+FROM nvidia/cuda:11.2.1-devel-ubuntu20.04
+
+# configure for tzdata
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update -y
+RUN apt-get install -y --no-install-recommends \
+    make \
+    cmake \
+    gcc \
+    g++ \
+    libboost-all-dev \
+    bc \
+    libomp-dev \
+    git
+
+RUN mkdir /workspace
+
+ENTRYPOINT ["/bin/bash"]
