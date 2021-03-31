@@ -34,7 +34,24 @@ class PairMLIPPairKokkos : public PairMLIPPair {
 
   void init_style();
   void compute(int, int);
-//
+
+  void compute_main_structural_feature_for_each_atom(vector2d &dn, int ii);
+  void compute_partial_structural_feature_for_each_atom(const vector2d &dn,
+                                                        int ii,
+                                                        vector3d &prod_all_f,
+                                                        vector3d &prod_all_e);
+  void compute_energy_and_force_for_each_atom(const vector3d &prod_all_f,
+                                              const vector3d &prod_all_e,
+                                              int ii,
+                                              vector2d &evdwl_array,
+                                              vector2d &fpair_array);
+  void accumulate_energy_and_force_for_all_atom(int inum,
+                                                int nlocal,
+                                                int newton_pair,
+                                                const vector2d &evdwl_array,
+                                                const vector2d &fpair_array);
+
+  //
 //  template<int NEIGHFLAG>
 //  KOKKOS_INLINE_FUNCTION
 //  void ev_tally(int i, int j, int nlocal, int newton_pair,
@@ -42,6 +59,10 @@ class PairMLIPPairKokkos : public PairMLIPPair {
 //                double delx, double dely, double delz)const;
 
  protected:
+  typename AT::t_neighbors_2d d_neighbors;
+  typename AT::t_int_1d_randomread d_ilist;
+  typename AT::t_int_1d_randomread d_numneigh;
+
   DAT::tdual_efloat_1d k_eatom;
   DAT::tdual_virial_array k_vatom;
   typename AT::t_efloat_1d d_eatom;
