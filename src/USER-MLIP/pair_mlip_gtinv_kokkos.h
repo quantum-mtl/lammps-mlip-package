@@ -32,7 +32,7 @@ class PairMLIPGtinvKokkos : public PairMLIPGtinv {
   PairMLIPGtinvKokkos(class LAMMPS *);
   virtual ~PairMLIPGtinvKokkos();
 
-//  void init_style();
+  void init_style();
   void compute(int, int);
 
   void accumulate_energy_and_force_for_all_atom(int inum,
@@ -42,14 +42,29 @@ class PairMLIPGtinvKokkos : public PairMLIPGtinv {
                                                 const vector2d &fx_array,
                                                 const vector2d &fy_array,
                                                 const vector2d &fz_array);
+  void compute_energy_and_force_for_each_atom(const barray4dc &prod_anlm_f,
+                                              const barray4dc &prod_anlm_e,
+                                              const vector1d &scales,
+                                              int ii,
+                                              vector2d &evdwl_array,
+                                              vector2d &fx_array,
+                                              vector2d &fy_array,
+                                              vector2d &fz_array);
+  void compute_partial_anlm_product_for_each_atom(const int n_fn,
+                                                  const int n_lm_all,
+                                                  const barray4dc &anlm,
+                                                  int ii,
+                                                  barray4dc &prod_anlm_f,
+                                                  barray4dc &prod_anlm_e);
+  barray4dc compute_anlm();
 
  protected:
-//  typename AT::t_neighbors_2d d_neighbors;
-//  typename AT::t_int_1d_randomread d_ilist;
-//  typename AT::t_int_1d_randomread d_numneigh;
-//  HAT::t_neighbors_2d h_neighbors;
-//  HAT::t_int_1d_randomread h_ilist;
-//  HAT::t_int_1d_randomread h_numneigh;
+  typename AT::t_neighbors_2d d_neighbors;
+  typename AT::t_int_1d_randomread d_ilist;
+  typename AT::t_int_1d_randomread d_numneigh;
+  HAT::t_neighbors_2d h_neighbors;
+  HAT::t_int_1d_randomread h_ilist;
+  HAT::t_int_1d_randomread h_numneigh;
 
 //  DAT::tdual_efloat_1d k_eatom;
 //  DAT::tdual_virial_array k_vatom;
