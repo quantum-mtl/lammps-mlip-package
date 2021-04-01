@@ -81,7 +81,62 @@ void PairMLIPGtinvKokkos<DeviceType>::compute(int eflag_in, int vflag_in) {
   vflag = vflag_in;
 
   atomKK->sync(Host, datamask_read);
-  PairMLIPGtinv::compute(eflag, vflag);
+  {
+    vflag = 1;
+    if (eflag || vflag) {
+      ev_setup(eflag, vflag);
+    } else {
+      evflag = 0;
+    }
+
+    int inum = list->inum;
+    int nlocal = atom->nlocal;
+    int newton_pair = force->newton_pair;
+
+    const int n_type_comb = pot.get_model_params().get_type_comb_pair().size(); // equal to n_type * (n_type + 1) / 2
+    const int n_fn = pot.get_model_params().get_n_fn();
+    const int n_lm = pot.get_lm_info().size();
+    const int n_lm_all = 2 * n_lm - pot.get_feature_params().maxl - 1;
+
+    // order paramter, (inum, n_type, n_fn, n_lm_all)
+    const barray4dc &anlm = compute_anlm();
+
+    // partial a_nlm products
+    barray4dc prod_anlm_f(boost::extents[n_type_comb][inum][n_fn][n_lm_all]);
+    barray4dc prod_anlm_e(boost::extents[n_type_comb][inum][n_fn][n_lm_all]);
+#ifdef _OPENMP
+#pragma omp parallel for schedule(guided)
+#endif
+    for (int ii = 0; ii < inum; ii++) {
+      compute_partial_anlm_product_for_each_atom(n_fn, n_lm_all, anlm, ii, prod_anlm_f, prod_anlm_e);
+    }
+
+    vector2d evdwl_array(inum), fx_array(inum), fy_array(inum), fz_array(inum);
+    for (int ii = 0; ii < inum; ii++) {
+      int i = list->ilist[ii];
+      int jnum = list->numneigh[i];
+      evdwl_array[ii].resize(jnum);
+      fx_array[ii].resize(jnum);
+      fy_array[ii].resize(jnum);
+      fz_array[ii].resize(jnum);
+    }
+
+    vector1d scales;
+    for (int l = 0; l < pot.get_feature_params().maxl + 1; ++l) {
+      if (l % 2 == 0) for (int m = -l; m < l + 1; ++m) scales.emplace_back(1.0);
+      else for (int m = -l; m < l + 1; ++m) scales.emplace_back(-1.0);
+    }
+
+#ifdef _OPENMP
+#pragma omp parallel for schedule(guided)
+#endif
+    for (int ii = 0; ii < inum; ii++) {
+      compute_energy_and_force_for_each_atom(prod_anlm_f, prod_anlm_e, scales, ii, evdwl_array,
+                                             fx_array, fy_array, fz_array);
+    }
+
+    accumulate_energy_and_force_for_all_atom(inum, nlocal, newton_pair, evdwl_array, fx_array, fy_array, fz_array);
+  }
   atomKK->modified(Host, datamask_modify);
   atomKK->sync(execution_space, datamask_modify);
 }
