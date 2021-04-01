@@ -13,7 +13,6 @@
 #include "atom_kokkos.h"
 #include "atom_masks.h"
 #include "neighbor_kokkos.h"
-//#include "neigh_list_kokkos.h"
 #include "neigh_request.h"
 #include "force.h"
 #include "comm_kokkos.h"
@@ -38,10 +37,6 @@ PairMLIPPairKokkos<DeviceType>::PairMLIPPairKokkos(LAMMPS *lmp):PairMLIPPair(lmp
   datamask_read = X_MASK | F_MASK | TYPE_MASK | ENERGY_MASK | VIRIAL_MASK;
   datamask_modify = F_MASK | ENERGY_MASK | VIRIAL_MASK;
 
-
-  k_cutsq = tdual_fparams("PairMLIPPairKokkos::cutsq", atom->ntypes + 1, atom->ntypes + 1);
-  auto d_cutsq = k_cutsq.template view<DeviceType>();
-  rnd_cutsq = d_cutsq;
   std::cerr << "######################\n";
   std::cerr << "# PairMLIPPairKokkos #\n";
   std::cerr << "######################\n";
@@ -58,10 +53,32 @@ PairMLIPPairKokkos<DeviceType>::~PairMLIPPairKokkos() {
 }
 
 template<class DeviceType>
+void PairMLIPPairKokkos<DeviceType>::init_style() {
+  if (force->newton_pair == 0) {
+    error->all(FLERR, "Pair style mlip_pair requires newton pair on");
+  }
+
+  neighflag = lmp->kokkos->neighflag;
+  int irequest = neighbor->request(this, instance_me);
+
+  neighbor->requests[irequest]->
+      kokkos_host = Kokkos::Impl::is_same<DeviceType, LMPHostType>::value &&
+      !Kokkos::Impl::is_same<DeviceType, LMPDeviceType>::value;
+  neighbor->requests[irequest]->
+      kokkos_device = Kokkos::Impl::is_same<DeviceType, LMPDeviceType>::value;
+
+  if (neighflag == HALF || neighflag == HALFTHREAD) {
+    neighbor->requests[irequest]->full = 0; // 0?
+    neighbor->requests[irequest]->half = 1; // 1?
+  } else {
+    error->all(FLERR, "Must use half neighbor list style with pair mlip_pair/kk");
+  }
+}
+
+template<class DeviceType>
 void PairMLIPPairKokkos<DeviceType>::compute(int eflag_in, int vflag_in) {
   eflag = eflag_in;
   vflag = vflag_in;
-  vflag = 1;  //!! NASTY HACK !!
 
   if (neighflag == FULL) no_virial_fdotr_compute = 1;
 
@@ -94,16 +111,10 @@ void PairMLIPPairKokkos<DeviceType>::compute(int eflag_in, int vflag_in) {
   Kokkos::deep_copy(h_ilist, d_ilist);
 
   copymode = 1; // set not to deallocate during destruction
-//  // required when classes are used as functors by Kokkos
-//
-//  atomKK->sync(execution_space, X_MASK | F_MASK | TYPE_MASK);
-//  x = atomKK->k_x.view<DeviceType>();
-//  f = atomKK->k_f.view<DeviceType>();
-//  type = atomKK->k_type.view<DeviceType>();
-//  k_cutsq.template sync<DeviceType>();
+                // required when classes are used as functors by Kokkos
 
   atomKK->sync(Host, datamask_read);
-//  PairMLIPPair::compute(eflag, vflag);
+
   {
     int inum = list->inum;
     int nlocal = atom->nlocal;
@@ -144,29 +155,6 @@ void PairMLIPPairKokkos<DeviceType>::compute(int eflag_in, int vflag_in) {
 }
 
 template<class DeviceType>
-void PairMLIPPairKokkos<DeviceType>::init_style() {
-  if (force->newton_pair == 0) {
-    error->all(FLERR, "Pair style mlip_pair requires newton pair on");
-  }
-
-  neighflag = lmp->kokkos->neighflag;
-  int irequest = neighbor->request(this, instance_me);
-
-  neighbor->requests[irequest]->
-      kokkos_host = Kokkos::Impl::is_same<DeviceType, LMPHostType>::value &&
-      !Kokkos::Impl::is_same<DeviceType, LMPDeviceType>::value;
-  neighbor->requests[irequest]->
-      kokkos_device = Kokkos::Impl::is_same<DeviceType, LMPDeviceType>::value;
-
-  if (neighflag == HALF || neighflag == HALFTHREAD) {
-    neighbor->requests[irequest]->full = 0; // 0?
-    neighbor->requests[irequest]->half = 1; // 1?
-  } else {
-    error->all(FLERR, "Must use half neighbor list style with pair mlip_pair/kk");
-  }
-}
-
-template<class DeviceType>
 void PairMLIPPairKokkos<DeviceType>::compute_main_structural_feature_for_each_atom(vector2d &dn, int ii) {
   int i, j, type1, type2, jnum, sindex, *ilist, *jlist;
   double delx, dely, delz, dis;
@@ -179,9 +167,9 @@ void PairMLIPPairKokkos<DeviceType>::compute_main_structural_feature_for_each_at
   i = h_ilist(ii);
   type1 = types[tag[i] - 1];
   jnum = h_numneigh[i];
-//  jlist = list->firstneigh[i];
+
   for (int jj = 0; jj < jnum; jj++) {
-    j = h_neighbors(i, jj);//jlist[jj];
+    j = h_neighbors(i, jj);
     j &= NEIGHMASK;
     delx = x[i][0] - x[j][0];
     dely = x[i][1] - x[j][1];
@@ -251,7 +239,6 @@ void PairMLIPPairKokkos<DeviceType>::compute_energy_and_force_for_each_atom(cons
   i = h_ilist[ii];
   type1 = types[tag[i] - 1];
   jnum = h_numneigh[i];
-//  jlist = list->firstneigh[i];
 
   const int n_fn = pot.get_model_params().get_n_fn();
   vector1d fn, fn_d;
@@ -259,7 +246,7 @@ void PairMLIPPairKokkos<DeviceType>::compute_energy_and_force_for_each_atom(cons
   evdwl_array[ii].resize(jnum);
   fpair_array[ii].resize(jnum);
   for (int jj = 0; jj < jnum; jj++) {
-    j = h_neighbors(i, jj);//jlist[jj];
+    j = h_neighbors(i, jj);
     j &= NEIGHMASK;
     delx = x[i][0] - x[j][0];
     dely = x[i][1] - x[j][1];
@@ -300,34 +287,40 @@ void PairMLIPPairKokkos<DeviceType>::accumulate_energy_and_force_for_all_atom(in
   double **f = atom->f;
   double **x = atom->x;
 
+  double ecoul;
+  evdwl = ecoul = 0.0;
+
   for (int ii = 0; ii < inum; ii++) {
     i = h_ilist[ii];
     jnum = h_numneigh[i];
-//    jlist = list->firstneigh[i];
     for (int jj = 0; jj < jnum; jj++) {
-      j = h_neighbors(i, jj);//jlist[jj];
+      j = h_neighbors(i, jj);
       j &= NEIGHMASK;
       delx = x[i][0] - x[j][0];
       dely = x[i][1] - x[j][1];
       delz = x[i][2] - x[j][2];
       dis = sqrt(delx * delx + dely * dely + delz * delz);
       if (dis < pot.get_feature_params().cutoff) {
-        evdwl = evdwl_array[ii][jj];
         fpair = fpair_array[ii][jj];
         f[i][0] += fpair * delx;
         f[i][1] += fpair * dely;
         f[i][2] += fpair * delz;
-        //            if (newton_pair || j < nlocal)
-        f[j][0] -= fpair * delx;
-        f[j][1] -= fpair * dely;
-        f[j][2] -= fpair * delz;
+        if (newton_pair || j < nlocal) {
+          f[j][0] -= fpair * delx;
+          f[j][1] -= fpair * dely;
+          f[j][2] -= fpair * delz;
+        }
+        if (eflag) {
+          evdwl = evdwl_array[ii][jj];
+        }
         if (evflag) {
           ev_tally(i, j, nlocal, newton_pair,
-                   evdwl, 0.0, fpair, delx, dely, delz);
+                   evdwl, ecoul, fpair, delx, dely, delz);
         }
       }
     }
   }
+  if (vflag_fdotr) LAMMPS_NS::Pair::virial_fdotr_compute();
 }
 }
 #endif //LMP_PAIR_MLIP_PAIR_KOKKOS_IMPL_H
