@@ -35,6 +35,14 @@ class PairMLIPGtinvKokkos : public PairMLIPGtinv {
 //  void init_style();
   void compute(int, int);
 
+  void accumulate_energy_and_force_for_all_atom(int inum,
+                                                int nlocal,
+                                                int newton_pair,
+                                                const vector2d &evdwl_array,
+                                                const vector2d &fx_array,
+                                                const vector2d &fy_array,
+                                                const vector2d &fz_array);
+
  protected:
 //  typename AT::t_neighbors_2d d_neighbors;
 //  typename AT::t_int_1d_randomread d_ilist;
@@ -52,7 +60,7 @@ class PairMLIPGtinvKokkos : public PairMLIPGtinv {
 
   int eflag, vflag;
 
-//  int neighflag;
+  int neighflag;
 };
 }
 

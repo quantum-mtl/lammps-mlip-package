@@ -80,15 +80,12 @@ void PairMLIPGtinvKokkos<DeviceType>::compute(int eflag_in, int vflag_in) {
   eflag = eflag_in;
   vflag = vflag_in;
 
+  if (neighflag == FULL) no_virial_fdotr_compute = 1;
+
+  ev_init(eflag, vflag, 0);
+
   atomKK->sync(Host, datamask_read);
   {
-    vflag = 1;
-    if (eflag || vflag) {
-      ev_setup(eflag, vflag);
-    } else {
-      evflag = 0;
-    }
-
     int inum = list->inum;
     int nlocal = atom->nlocal;
     int newton_pair = force->newton_pair;
@@ -139,6 +136,54 @@ void PairMLIPGtinvKokkos<DeviceType>::compute(int eflag_in, int vflag_in) {
   }
   atomKK->modified(Host, datamask_modify);
   atomKK->sync(execution_space, datamask_modify);
+}
+
+template<class DeviceType>
+void PairMLIPGtinvKokkos<DeviceType>::accumulate_energy_and_force_for_all_atom(int inum,
+                                                                               int nlocal,
+                                                                               int newton_pair,
+                                                                               const vector2d &evdwl_array,
+                                                                               const vector2d &fx_array,
+                                                                               const vector2d &fy_array,
+                                                                               const vector2d &fz_array) {
+  int i, j, jnum, *jlist;
+  double fx, fy, fz, evdwl, dis, delx, dely, delz;
+  double **f = atom->f;
+  double **x = atom->x;
+
+  double ecoul;
+  evdwl = ecoul = 0.0;
+
+  for (int ii = 0; ii < inum; ii++) {
+    i = list->ilist[ii];
+    jnum = list->numneigh[i], jlist = list->firstneigh[i];
+    for (int jj = 0; jj < jnum; jj++) {
+      j = jlist[jj];
+      delx = x[i][0] - x[j][0];
+      dely = x[i][1] - x[j][1];
+      delz = x[i][2] - x[j][2];
+      dis = sqrt(delx * delx + dely * dely + delz * delz);
+      if (dis < pot.get_feature_params().cutoff) {
+        evdwl = evdwl_array[ii][jj];
+        fx = fx_array[ii][jj];
+        fy = fy_array[ii][jj];
+        fz = fz_array[ii][jj];
+        f[i][0] += fx;
+        f[i][1] += fy;
+        f[i][2] += fz;
+        if (newton_pair || j < nlocal) {
+          f[j][0] -= fx;
+          f[j][1] -= fy;
+          f[j][2] -= fz;
+        }
+        if (evflag) {
+          ev_tally_xyz(i, j, nlocal, newton_pair,
+                       evdwl, ecoul, fx, fy, fz, delx, dely, delz);
+        }
+      }
+    }
+  }
+  if (vflag_fdotr) LAMMPS_NS::Pair::virial_fdotr_compute();
 }
 }
 #endif //LAMMPS_MLIP_PACKAGE_SRC_USER_MLIP_PAIR_MLIP_GTINV_KOKKOS_IMPL_H_
