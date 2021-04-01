@@ -86,6 +86,13 @@ void PairMLIPPairKokkos<DeviceType>::compute(int eflag_in, int vflag_in) {
   d_ilist = k_list->d_ilist;
   int inum = list->inum;
 
+  h_numneigh = Kokkos::create_mirror_view(d_numneigh);
+  h_neighbors = Kokkos::create_mirror_view(d_neighbors);
+  h_ilist = Kokkos::create_mirror_view(d_ilist);
+  Kokkos::deep_copy(h_numneigh, d_numneigh);
+  Kokkos::deep_copy(h_neighbors, d_neighbors);
+  Kokkos::deep_copy(h_ilist, d_ilist);
+
   copymode = 1; // set not to deallocate during destruction
 //  // required when classes are used as functors by Kokkos
 //
@@ -101,7 +108,6 @@ void PairMLIPPairKokkos<DeviceType>::compute(int eflag_in, int vflag_in) {
     int inum = list->inum;
     int nlocal = atom->nlocal;
     int newton_pair = force->newton_pair;
-    std::cerr << "nl" << nlocal << " np" << newton_pair;
 
     const int n_type_comb = pot.get_model_params().get_type_comb_pair().size();
     vector3d prod_all_f(n_type_comb, vector2d(inum));
@@ -139,7 +145,6 @@ void PairMLIPPairKokkos<DeviceType>::compute(int eflag_in, int vflag_in) {
 
 template<class DeviceType>
 void PairMLIPPairKokkos<DeviceType>::init_style() {
-  std::cerr << "PairMLIPPairKokkos::init_style";
   if (force->newton_pair == 0) {
     error->all(FLERR, "Pair style mlip_pair requires newton pair on");
   }
@@ -170,13 +175,6 @@ void PairMLIPPairKokkos<DeviceType>::compute_main_structural_feature_for_each_at
 
   vector1d fn;
   const int n_fn = pot.get_model_params().get_n_fn();
-
-  auto h_numneigh = Kokkos::create_mirror_view(d_numneigh);
-  auto h_neighbors = Kokkos::create_mirror_view(d_neighbors);
-  auto h_ilist = Kokkos::create_mirror_view(d_ilist);
-  Kokkos::deep_copy(h_numneigh, d_numneigh);
-  Kokkos::deep_copy(h_neighbors, d_neighbors);
-  Kokkos::deep_copy(h_ilist, d_ilist);
 
   i = h_ilist(ii);
   type1 = types[tag[i] - 1];
@@ -218,13 +216,6 @@ void PairMLIPPairKokkos<DeviceType>::compute_partial_structural_feature_for_each
   tagint *tag = atom->tag;
   ilist = list->ilist;
 
-  auto h_numneigh = Kokkos::create_mirror_view(d_numneigh);
-  auto h_neighbors = Kokkos::create_mirror_view(d_neighbors);
-  auto h_ilist = Kokkos::create_mirror_view(d_ilist);
-  Kokkos::deep_copy(h_numneigh, d_numneigh);
-  Kokkos::deep_copy(h_neighbors, d_neighbors);
-  Kokkos::deep_copy(h_ilist, d_ilist);
-
   i = h_ilist[ii], type1 = types[tag[i] - 1];
   const int n_fn = pot.get_model_params().get_n_fn();
   const vector1d &prodi
@@ -256,13 +247,6 @@ void PairMLIPPairKokkos<DeviceType>::compute_energy_and_force_for_each_atom(cons
   double delx, dely, delz, dis, fpair, evdwl;
   double **x = atom->x;
   tagint *tag = atom->tag;
-
-  auto h_numneigh = Kokkos::create_mirror_view(d_numneigh);
-  auto h_neighbors = Kokkos::create_mirror_view(d_neighbors);
-  auto h_ilist = Kokkos::create_mirror_view(d_ilist);
-  Kokkos::deep_copy(h_numneigh, d_numneigh);
-  Kokkos::deep_copy(h_neighbors, d_neighbors);
-  Kokkos::deep_copy(h_ilist, d_ilist);
 
   i = h_ilist[ii];
   type1 = types[tag[i] - 1];
@@ -315,13 +299,6 @@ void PairMLIPPairKokkos<DeviceType>::accumulate_energy_and_force_for_all_atom(in
   double fpair, evdwl, dis, delx, dely, delz;
   double **f = atom->f;
   double **x = atom->x;
-
-  auto h_numneigh = Kokkos::create_mirror_view(d_numneigh);
-  auto h_neighbors = Kokkos::create_mirror_view(d_neighbors);
-  auto h_ilist = Kokkos::create_mirror_view(d_ilist);
-  Kokkos::deep_copy(h_numneigh, d_numneigh);
-  Kokkos::deep_copy(h_neighbors, d_neighbors);
-  Kokkos::deep_copy(h_ilist, d_ilist);
 
   for (int ii = 0; ii < inum; ii++) {
     i = h_ilist[ii];

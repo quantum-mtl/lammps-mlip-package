@@ -62,6 +62,9 @@ class PairMLIPPairKokkos : public PairMLIPPair {
   typename AT::t_neighbors_2d d_neighbors;
   typename AT::t_int_1d_randomread d_ilist;
   typename AT::t_int_1d_randomread d_numneigh;
+  HAT::t_neighbors_2d h_neighbors;
+  HAT::t_int_1d_randomread h_ilist;
+  HAT::t_int_1d_randomread h_numneigh;
 
   DAT::tdual_efloat_1d k_eatom;
   DAT::tdual_virial_array k_vatom;
