@@ -152,6 +152,8 @@ void PairMLIPPairKokkos<DeviceType>::compute(int eflag_in, int vflag_in) {
 
   atomKK->modified(Host, datamask_modify);
   atomKK->sync(execution_space, datamask_modify);
+
+  copymode = 0;
 }
 
 template<class DeviceType>
