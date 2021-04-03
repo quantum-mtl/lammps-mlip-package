@@ -18,7 +18,6 @@ PairStyle(mlip_pair/kk/host,PairMLIPPairKokkos<LMPHostType>)
 #include "neigh_list_kokkos.h"
 
 #include "pair_mlip_pair.h"
-#include "mlip_kokkos.h"
 
 namespace LAMMPS_NS {
 
