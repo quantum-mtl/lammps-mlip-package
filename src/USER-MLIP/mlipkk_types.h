@@ -21,8 +21,8 @@
 
 *****************************************************************************/
 
-#ifndef __PYMLCPP_MODEL
-#define __PYMLCPP_MODEL
+#ifndef __MLIPKK_TYPES_H_
+#define __MLIPKK_TYPES_H_
 
 #include <vector>
 #include <complex>
@@ -74,4 +74,4 @@ using vector4dc = std::vector<vector3dc>;
 using vector5dc = std::vector<vector4dc>;
 
 } // namespace MLIP_NS
-#endif
+#endif //__MLIPKK_TYPES_H_

@@ -1,5 +1,5 @@
-#ifndef MLIP_POLYNOMIAL_H
-#define MLIP_POLYNOMIAL_H
+#ifndef MLIPKK_POLYNOMIAL_H_
+#define MLIPKK_POLYNOMIAL_H_
 
 #include <vector>
 #include <map>
@@ -57,4 +57,4 @@ public:
 
 } // namespace MLIP_NS
 
-#endif
+#endif //MLIPKK_POLYNOMIAL_H_

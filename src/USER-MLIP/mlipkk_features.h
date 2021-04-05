@@ -21,8 +21,8 @@
 
 ****************************************************************************/
 
-#ifndef __MLIP_FEATURES
-#define __MLIP_FEATURES
+#ifndef __MLIPKK_FEATURES_H_
+#define __MLIPKK_FEATURES_H_
 
 #include "mlipkk_spherical_harmonics.h"
 #include "mlipkk_types.h"
@@ -42,4 +42,4 @@ void get_fn_ylm_dev(const double delx, const double dely, const double delz,
 
 } // namespace MLIP_NS
 
-#endif
+#endif //__MLIPKK_FEATURES_H_
