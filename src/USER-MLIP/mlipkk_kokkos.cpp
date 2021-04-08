@@ -1,6 +1,3 @@
-#ifndef LMP_PAIR_MLIP_KOKKOS_IMPL_H
-#define LMP_PAIR_MLIP_KOKKOS_IMPL_H
-
 #include "mlipkk_kokkos.h"
 
 #include <iostream>
@@ -849,8 +846,8 @@ void MLIPModel::compute_forces_and_stress() {
                          // update forces
                          auto sd_forces_a = sd_forces.access();
                          sd_forces_a(i, 0) += fx;
-                         sd_forces_a(i, 1) += fx;
-                         sd_forces_a(i, 2) += fx;
+                         sd_forces_a(i, 1) += fy;
+                         sd_forces_a(i, 2) += fz;
                          sd_forces_a(j, 0) -= fx;
                          sd_forces_a(j, 1) -= fy;
                          sd_forces_a(j, 2) -= fz;
@@ -996,6 +993,3 @@ double MLIPModel::product_real_part(const Kokkos::complex<double>& lhs, const Ko
 }
 
 } // namespace MLIP
-
-
-#endif //LMP_PAIR_MLIP_KOKKOS_IMPL_H
