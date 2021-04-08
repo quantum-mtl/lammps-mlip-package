@@ -146,11 +146,6 @@ public:
     // setter for structure
     void set_structure(const std::vector<ElementType>& types,
                        const vector3d& displacements, const std::vector<std::vector<SiteIdx>>& neighbors);
-    // template<class NEIGHLISTKOKKOS>
-    // void set_structure_lmp(const std::vector<ElementType> &types,
-    //                        NEIGHLISTKOKKOS* k_ilist,
-    //                        double* x,
-    //                        int* tag);
     template<class PairStyle, class NeighListKokkos>
     void set_structure_lmp(PairStyle *fpair, NeighListKokkos* k_list);
     void compute();

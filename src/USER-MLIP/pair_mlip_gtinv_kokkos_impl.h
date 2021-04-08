@@ -156,14 +156,7 @@ void PairMLIPGtinvKokkos<DeviceType>::compute(int eflag_in, int vflag_in) {
 
   atomKK->sync(Host, datamask_read);
   { // MLIP_NS compute
-    // model.set_structure_lmp<NeighListKokkos<DeviceType>>(types, k_list, atomKK->k_x.h_view.data(), atomKK->k_tag.h_view.data());
     model.set_structure_lmp<PairMLIPGtinvKokkos<DeviceType>, NeighListKokkos<DeviceType>>(this, k_list);
-
-//    model.prepare_features();
-//    model.compute_energy();
-//    model.compute_polynomial_adjoints();
-//    model.compute_basis_function_adjoints();
-//    model.compute_forces_and_stress();
     model.compute();
     // TODO: UPDATE F, Energy, Virial
   }
@@ -172,109 +165,6 @@ void PairMLIPGtinvKokkos<DeviceType>::compute(int eflag_in, int vflag_in) {
   copymode = 0;
 }
 
-// template<class PairStyle>
-// void set_structure_lmp(PairStyle *fpair, MLIP_NS::MLIPModel &model){
-//   using namespace MLIP_NS;
-//   auto d_numneigh = fpair->k_list->d_numneigh;
-//   auto d_neighbors = fpair->k_list->d_neighbors;
-//   auto d_ilist = fpair->k_list->d_ilist;
-//   model.inum_ = fpair->k_list->inum;
-//   auto &n_pairs_ = model.n_pairs_;
-
-
-//   auto h_numneigh = Kokkos::create_mirror_view(d_numneigh);
-//   auto h_neighbors = Kokkos::create_mirror_view(d_neighbors);
-//   auto h_ilist = Kokkos::create_mirror_view(d_ilist);
-//   Kokkos::deep_copy(h_numneigh, d_numneigh);
-//   Kokkos::deep_copy(h_neighbors, d_neighbors);
-//   Kokkos::deep_copy(h_ilist, d_ilist);
-
-//   // number of (i, j) neighbors
-//   // TODO: atom-first indexing for GPU
-//   n_pairs_ = 0;
-//   for (int ii = 0; ii < inum_; ++ii) {
-//     const SiteIdx i = h_ilist(ii);
-//     n_pairs_ += h_numneigh(i);
-//   }
-// //  Kokkos::parallel_reduce("number of (i, j) neighbors", inum, KOKKOS_LAMBDA(const int& i, int& lsum){
-// //    lsum += d_numneigh(i);
-// //  }, n_pairs_);
-
-//   // flatten half-neighbor list
-//   // neighbor_pair_index and neighbor_pair_displacements
-//   Kokkos::resize(model.neighbor_pair_index_kk_, n_pairs_);
-//   Kokkos::resize(model.neighbor_pair_displacements_kk_, n_pairs_, 3);
-//   auto h_neighbor_pair_index = model.neighbor_pair_index_kk_.view_host();
-//   auto h_neighbor_pair_displacements = model.neighbor_pair_displacements_kk_.view_host();
-
-//   NeighborPairIdx count_neighbor = 0;
-//   for (int ii = 0; ii < inum_; ++ii) {
-//     const SiteIdx i = h_ilist(ii);
-//     const int num_neighbors_i = h_numneigh(i);
-//     for (int jj = 0; jj < num_neighbors_i; ++jj) {
-//       SiteIdx j = h_neighbors(i, jj);
-//       j &= NEIGHMASK;
-//       h_neighbor_pair_index(count_neighbor) = Kokkos::pair<SiteIdx, SiteIdx>(i, j);
-//       h_neighbor_pair_displacements(count_neighbor, 0) = x[j * 3 + 0] - x[i * 3 + 0];
-//       h_neighbor_pair_displacements(count_neighbor, 1) = x[j * 3 + 1] - x[i * 3 + 1];
-//       h_neighbor_pair_displacements(count_neighbor, 2) = x[j * 3 + 2] - x[i * 3 + 2];
-//       ++count_neighbor;
-//     }
-//   }
-//   model.neighbor_pair_index_kk_.modify_host();
-//   model.neighbor_pair_displacements_kk_.modify_host();
-//   model.neighbor_pair_index_kk_.sync_device();
-//   model.neighbor_pair_displacements_kk_.sync_device();
-
-//   // neighbor_pair_typecomb
-//   Kokkos::resize(model.neighbor_pair_typecomb_kk_, n_pairs_);
-//   auto h_neighbor_pair_typecomb = model.neighbor_pair_typecomb_kk_.view_host();
-//   for (NeighborPairIdx npidx = 0; npidx < n_pairs_; ++npidx) {
-//     const auto &ij = h_neighbor_pair_index(npidx);
-//     const SiteIdx i = ij.first;
-//     const SiteIdx j = ij.second;
-//     const ElementType type_i = types[i];
-//     const ElementType type_j = types[j];
-//     h_neighbor_pair_typecomb(npidx) = type_pairs_kk_.h_view(type_i, type_j);
-//   }
-//   model.neighbor_pair_typecomb_kk_.modify_host();
-//   model.neighbor_pair_typecomb_kk_.sync_device();
-
-//   // types
-//   Kokkos::resize(types_kk_, inum_);
-//   auto h_types = types_kk_.view_host();
-//   for (int ii = 0; ii < inum_; ++ii) {
-//     const SiteIdx i = h_ilist(ii);
-//     const int tagi = tag[i];
-//     types_kk_.h_view(i) = types[tagi - 1];
-//   }
-//   types_kk_.modify_host();
-//   types_kk_.sync_device();
-
-//   // resize views
-//   // TODO: move resizes to hide allocation time
-//   Kokkos::resize(d_distance_, n_pairs_);
-//   Kokkos::resize(d_fn_, n_pairs_, n_fn_);
-//   Kokkos::resize(d_fn_der_, n_pairs_, n_fn_);
-//   Kokkos::resize(d_alp_, n_pairs_, n_lm_half_);
-//   Kokkos::resize(d_alp_sintheta_, n_pairs_, n_lm_half_);
-//   Kokkos::resize(d_ylm_, n_pairs_, n_lm_half_);
-//   Kokkos::resize(d_ylm_dx_, n_pairs_, n_lm_half_);
-//   Kokkos::resize(d_ylm_dy_, n_pairs_, n_lm_half_);
-//   Kokkos::resize(d_ylm_dz_, n_pairs_, n_lm_half_);
-
-//   Kokkos::resize(d_anlm_r_, inum_, n_types_, n_fn_, n_lm_half_);
-//   Kokkos::resize(d_anlm_i_, inum_, n_types_, n_fn_, n_lm_half_);
-//   Kokkos::resize(d_anlm_, inum_, n_types_, n_fn_, n_lm_all_);
-//   Kokkos::resize(structural_features_kk_, inum_, n_des_);
-//   Kokkos::resize(d_polynomial_adjoints_, inum_, n_des_);
-//   Kokkos::resize(d_basis_function_adjoints_, inum_, n_typecomb_, n_fn_, n_lm_half_);
-
-//   Kokkos::resize(site_energy_kk_, inum_);
-//   Kokkos::resize(forces_kk_, inum_, 3);
-
-//   Kokkos::fence();
-// }
 
 } // namespace LAMMPS
 
