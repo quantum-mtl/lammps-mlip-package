@@ -37,6 +37,10 @@ PairMLIPGtinvKokkos<DeviceType>::PairMLIPGtinvKokkos(LAMMPS *lmp) : PairMLIPGtin
   datamask_read = X_MASK | F_MASK | TYPE_MASK | ENERGY_MASK | VIRIAL_MASK;
   datamask_modify = F_MASK | ENERGY_MASK | VIRIAL_MASK;
 
+  k_cutsq = tdual_fparams("PairMLIPGtinvKokkos::cutsq",atom->ntypes+1,atom->ntypes+1);
+  auto d_cutsq = k_cutsq.template view<DeviceType>();
+  rnd_cutsq = d_cutsq;
+
   std::cerr << "#######################\n";
   std::cerr << "# PairMLIPGtinvKokkos #\n";
   std::cerr << "#######################\n";
@@ -53,6 +57,63 @@ PairMLIPGtinvKokkos<DeviceType>::~PairMLIPGtinvKokkos() {
 }
 
 template<class DeviceType>
+void PairMLIPGtinvKokkos<DeviceType>::coeff(int narg, char **arg) {
+  //TODO implement on Device
+  if (!allocated) allocate();
+
+  if (narg != 3 + atom->ntypes)
+    error->all(FLERR,"Incorrect args for pair coefficients");
+
+  // insure I,J args are * *
+  if (strcmp(arg[0],"*") != 0 || strcmp(arg[1],"*") != 0)
+    error->all(FLERR,"Incorrect args for pair coefficients");
+
+  // read parameter file
+  MLIP_NS::read_potential_file(arg[2], ele, mass, &fp, reg_coeffs, gtinvdata);
+  model.initialize(fp, reg_coeffs, gtinvdata);
+
+  std::vector<int> map(atom->ntypes);
+
+  for (int i = 3; i < narg; ++i) {
+    for (int j = 0; j < ele.size(); ++j) {
+      if (strcmp(arg[i], ele[j].c_str()) == 0) {
+        map[i - 3] = j;
+        break;
+      }
+    }
+  }
+
+  for (MLIP_NS::ElementType i = 1; i <= atom->ntypes; ++i) {
+    atom->set_mass(FLERR, i, mass[map[i - 1]]);
+    for (MLIP_NS::ElementType j = 1; j <= atom->ntypes; ++j) {
+      setflag[i][j] = 1;
+    }
+  }
+
+  for (MLIP_NS::SiteIdx i = 0; i < atom->natoms; ++i) {
+    types.template emplace_back(map[(atom->type)[i] - 1]);
+  }
+}
+
+template<class DeviceType>
+double PairMLIPGtinvKokkos<DeviceType>::init_one(int i, int j) {
+  //! DO NOT CALL PairMLIPGtinv::init_one(). It requires pot.get_cutmax(), but we have no `pot`.
+  if (setflag[i][j] == 0) error->all(FLERR, "All pair coeffs are not set");
+  double cutone = fp.cutoff;
+  k_cutsq.h_view(i, j) = k_cutsq.h_view(j, i) = cutone * cutone;
+  k_cutsq.template modify<LMPHostType>();
+  return cutone;
+}
+
+template<class DeviceType>
+void PairMLIPGtinvKokkos<DeviceType>::allocate() {
+  PairMLIPGtinv::allocate();
+  //TODO: implement d_map to execute coeff() on Device
+  // int n = atom->ntypes;
+  // d_map = Kokkos::View<T_INT*, DeviceType>("PairSNAPKokkos::map",n+1);
+}
+
+template<class DeviceType>
 void PairMLIPGtinvKokkos<DeviceType>::init_style() {
   if (force->newton_pair == 0) {
     error->all(FLERR, "Pair style mlip_gtinv requires newton pair on");
@@ -62,10 +123,10 @@ void PairMLIPGtinvKokkos<DeviceType>::init_style() {
   int irequest = neighbor->request(this, instance_me);
 
   neighbor->requests[irequest]->
-      kokkos_host = Kokkos::Impl::is_same<DeviceType, LMPHostType>::value &&
-      !Kokkos::Impl::is_same<DeviceType, LMPDeviceType>::value;
+      kokkos_host = std::is_same<DeviceType, LMPHostType>::value &&
+      !std::is_same<DeviceType, LMPDeviceType>::value;
   neighbor->requests[irequest]->
-      kokkos_device = Kokkos::Impl::is_same<DeviceType, LMPDeviceType>::value;
+      kokkos_device = std::is_same<DeviceType, LMPDeviceType>::value;
 
   if (neighflag == HALF || neighflag == HALFTHREAD) {
     neighbor->requests[irequest]->full = 0; // 0?
@@ -88,369 +149,240 @@ void PairMLIPGtinvKokkos<DeviceType>::compute(int eflag_in, int vflag_in) {
   d_numneigh = k_list->d_numneigh;
   d_neighbors = k_list->d_neighbors;
   d_ilist = k_list->d_ilist;
-  int inum = list->inum;
-
-  h_numneigh = Kokkos::create_mirror_view(d_numneigh);
-  h_neighbors = Kokkos::create_mirror_view(d_neighbors);
-  h_ilist = Kokkos::create_mirror_view(d_ilist);
-  Kokkos::deep_copy(h_numneigh, d_numneigh);
-  Kokkos::deep_copy(h_neighbors, d_neighbors);
-  Kokkos::deep_copy(h_ilist, d_ilist);
+  inum = list->inum;
 
   copymode = 1; // set not to deallocate during destruction
-                // required when classes are used as functors by Kokkos
+  // required when classes are used as functors by Kokkos
 
   atomKK->sync(Host, datamask_read);
-  {
-    int inum = list->inum;
-    int nlocal = atom->nlocal;
-    int newton_pair = force->newton_pair;
+  { // MLIP_NS compute
+    // model.set_structure_lmp<NeighListKokkos<DeviceType>>(types, k_list, atomKK->k_x.h_view.data(), atomKK->k_tag.h_view.data());
+    model.set_structure_lmp<PairMLIPGtinvKokkos<DeviceType>, NeighListKokkos<DeviceType>>(this, k_list);
 
-    const int n_type_comb = pot.get_model_params().get_type_comb_pair().size(); // equal to n_type * (n_type + 1) / 2
-    const int n_fn = pot.get_model_params().get_n_fn();
-    const int n_lm = pot.get_lm_info().size();
-    const int n_lm_all = 2 * n_lm - pot.get_feature_params().maxl - 1;
-
-    // order paramter, (inum, n_type, n_fn, n_lm_all)
-    const barray4dc &anlm = compute_anlm();
-
-    // partial a_nlm products
-    barray4dc prod_anlm_f(boost::extents[n_type_comb][inum][n_fn][n_lm_all]);
-    barray4dc prod_anlm_e(boost::extents[n_type_comb][inum][n_fn][n_lm_all]);
-#ifdef _OPENMP
-#pragma omp parallel for schedule(guided)
-#endif
-    for (int ii = 0; ii < inum; ii++) {
-      compute_partial_anlm_product_for_each_atom(n_fn, n_lm_all, anlm, ii, prod_anlm_f, prod_anlm_e);
-    }
-
-    vector2d evdwl_array(inum), fx_array(inum), fy_array(inum), fz_array(inum);
-    for (int ii = 0; ii < inum; ii++) {
-      int i = h_ilist(ii);
-      int jnum = h_numneigh(i);
-      evdwl_array[ii].resize(jnum);
-      fx_array[ii].resize(jnum);
-      fy_array[ii].resize(jnum);
-      fz_array[ii].resize(jnum);
-    }
-
-    vector1d scales;
-    for (int l = 0; l < pot.get_feature_params().maxl + 1; ++l) {
-      if (l % 2 == 0) for (int m = -l; m < l + 1; ++m) scales.emplace_back(1.0);
-      else for (int m = -l; m < l + 1; ++m) scales.emplace_back(-1.0);
-    }
-
-#ifdef _OPENMP
-#pragma omp parallel for schedule(guided)
-#endif
-    for (int ii = 0; ii < inum; ii++) {
-      compute_energy_and_force_for_each_atom(prod_anlm_f, prod_anlm_e, scales, ii, evdwl_array,
-                                             fx_array, fy_array, fz_array);
-    }
-
-    accumulate_energy_and_force_for_all_atom(inum, nlocal, newton_pair, evdwl_array, fx_array, fy_array, fz_array);
+//    model.prepare_features();
+//    model.compute_energy();
+//    model.compute_polynomial_adjoints();
+//    model.compute_basis_function_adjoints();
+//    model.compute_forces_and_stress();
+    model.compute();
+    // TODO: UPDATE F, Energy, Virial
   }
-  atomKK->modified(Host, datamask_modify);
-  atomKK->sync(execution_space, datamask_modify);
+  atomKK->modified(execution_space, datamask_modify);
 
   copymode = 0;
 }
 
-template<class DeviceType>
-void PairMLIPGtinvKokkos<DeviceType>::accumulate_energy_and_force_for_all_atom(int inum,
-                                                                               int nlocal,
-                                                                               int newton_pair,
-                                                                               const vector2d &evdwl_array,
-                                                                               const vector2d &fx_array,
-                                                                               const vector2d &fy_array,
-                                                                               const vector2d &fz_array) {
-  int i, j, jnum, *jlist;
-  double fx, fy, fz, evdwl, dis, delx, dely, delz;
-  double **f = atom->f;
-  double **x = atom->x;
+// template<class PairStyle>
+// void set_structure_lmp(PairStyle *fpair, MLIP_NS::MLIPModel &model){
+//   using namespace MLIP_NS;
+//   auto d_numneigh = fpair->k_list->d_numneigh;
+//   auto d_neighbors = fpair->k_list->d_neighbors;
+//   auto d_ilist = fpair->k_list->d_ilist;
+//   model.inum_ = fpair->k_list->inum;
+//   auto &n_pairs_ = model.n_pairs_;
 
-  double ecoul;
-  evdwl = ecoul = 0.0;
 
-  for (int ii = 0; ii < inum; ii++) {
-    i = h_ilist(ii);
-    jnum = h_numneigh(i);
-    for (int jj = 0; jj < jnum; jj++) {
-      j = h_neighbors(i, jj);
+//   auto h_numneigh = Kokkos::create_mirror_view(d_numneigh);
+//   auto h_neighbors = Kokkos::create_mirror_view(d_neighbors);
+//   auto h_ilist = Kokkos::create_mirror_view(d_ilist);
+//   Kokkos::deep_copy(h_numneigh, d_numneigh);
+//   Kokkos::deep_copy(h_neighbors, d_neighbors);
+//   Kokkos::deep_copy(h_ilist, d_ilist);
+
+//   // number of (i, j) neighbors
+//   // TODO: atom-first indexing for GPU
+//   n_pairs_ = 0;
+//   for (int ii = 0; ii < inum_; ++ii) {
+//     const SiteIdx i = h_ilist(ii);
+//     n_pairs_ += h_numneigh(i);
+//   }
+// //  Kokkos::parallel_reduce("number of (i, j) neighbors", inum, KOKKOS_LAMBDA(const int& i, int& lsum){
+// //    lsum += d_numneigh(i);
+// //  }, n_pairs_);
+
+//   // flatten half-neighbor list
+//   // neighbor_pair_index and neighbor_pair_displacements
+//   Kokkos::resize(model.neighbor_pair_index_kk_, n_pairs_);
+//   Kokkos::resize(model.neighbor_pair_displacements_kk_, n_pairs_, 3);
+//   auto h_neighbor_pair_index = model.neighbor_pair_index_kk_.view_host();
+//   auto h_neighbor_pair_displacements = model.neighbor_pair_displacements_kk_.view_host();
+
+//   NeighborPairIdx count_neighbor = 0;
+//   for (int ii = 0; ii < inum_; ++ii) {
+//     const SiteIdx i = h_ilist(ii);
+//     const int num_neighbors_i = h_numneigh(i);
+//     for (int jj = 0; jj < num_neighbors_i; ++jj) {
+//       SiteIdx j = h_neighbors(i, jj);
+//       j &= NEIGHMASK;
+//       h_neighbor_pair_index(count_neighbor) = Kokkos::pair<SiteIdx, SiteIdx>(i, j);
+//       h_neighbor_pair_displacements(count_neighbor, 0) = x[j * 3 + 0] - x[i * 3 + 0];
+//       h_neighbor_pair_displacements(count_neighbor, 1) = x[j * 3 + 1] - x[i * 3 + 1];
+//       h_neighbor_pair_displacements(count_neighbor, 2) = x[j * 3 + 2] - x[i * 3 + 2];
+//       ++count_neighbor;
+//     }
+//   }
+//   model.neighbor_pair_index_kk_.modify_host();
+//   model.neighbor_pair_displacements_kk_.modify_host();
+//   model.neighbor_pair_index_kk_.sync_device();
+//   model.neighbor_pair_displacements_kk_.sync_device();
+
+//   // neighbor_pair_typecomb
+//   Kokkos::resize(model.neighbor_pair_typecomb_kk_, n_pairs_);
+//   auto h_neighbor_pair_typecomb = model.neighbor_pair_typecomb_kk_.view_host();
+//   for (NeighborPairIdx npidx = 0; npidx < n_pairs_; ++npidx) {
+//     const auto &ij = h_neighbor_pair_index(npidx);
+//     const SiteIdx i = ij.first;
+//     const SiteIdx j = ij.second;
+//     const ElementType type_i = types[i];
+//     const ElementType type_j = types[j];
+//     h_neighbor_pair_typecomb(npidx) = type_pairs_kk_.h_view(type_i, type_j);
+//   }
+//   model.neighbor_pair_typecomb_kk_.modify_host();
+//   model.neighbor_pair_typecomb_kk_.sync_device();
+
+//   // types
+//   Kokkos::resize(types_kk_, inum_);
+//   auto h_types = types_kk_.view_host();
+//   for (int ii = 0; ii < inum_; ++ii) {
+//     const SiteIdx i = h_ilist(ii);
+//     const int tagi = tag[i];
+//     types_kk_.h_view(i) = types[tagi - 1];
+//   }
+//   types_kk_.modify_host();
+//   types_kk_.sync_device();
+
+//   // resize views
+//   // TODO: move resizes to hide allocation time
+//   Kokkos::resize(d_distance_, n_pairs_);
+//   Kokkos::resize(d_fn_, n_pairs_, n_fn_);
+//   Kokkos::resize(d_fn_der_, n_pairs_, n_fn_);
+//   Kokkos::resize(d_alp_, n_pairs_, n_lm_half_);
+//   Kokkos::resize(d_alp_sintheta_, n_pairs_, n_lm_half_);
+//   Kokkos::resize(d_ylm_, n_pairs_, n_lm_half_);
+//   Kokkos::resize(d_ylm_dx_, n_pairs_, n_lm_half_);
+//   Kokkos::resize(d_ylm_dy_, n_pairs_, n_lm_half_);
+//   Kokkos::resize(d_ylm_dz_, n_pairs_, n_lm_half_);
+
+//   Kokkos::resize(d_anlm_r_, inum_, n_types_, n_fn_, n_lm_half_);
+//   Kokkos::resize(d_anlm_i_, inum_, n_types_, n_fn_, n_lm_half_);
+//   Kokkos::resize(d_anlm_, inum_, n_types_, n_fn_, n_lm_all_);
+//   Kokkos::resize(structural_features_kk_, inum_, n_des_);
+//   Kokkos::resize(d_polynomial_adjoints_, inum_, n_des_);
+//   Kokkos::resize(d_basis_function_adjoints_, inum_, n_typecomb_, n_fn_, n_lm_half_);
+
+//   Kokkos::resize(site_energy_kk_, inum_);
+//   Kokkos::resize(forces_kk_, inum_, 3);
+
+//   Kokkos::fence();
+// }
+
+} // namespace LAMMPS
+
+namespace MLIP_NS{
+template<class PairStyle, class NeighListKokkos>
+void MLIPModel::set_structure_lmp(PairStyle *fpair, NeighListKokkos* k_list) {
+  auto d_numneigh = k_list->d_numneigh;
+  auto d_neighbors = k_list->d_neighbors;
+  auto d_ilist = k_list->d_ilist;
+  inum_ = k_list->inum;
+  double **x = fpair->atom->x;
+  LAMMPS_NS::tagint *tag = fpair->atom->tag;
+  const std::vector<ElementType> &types = fpair->types;
+
+  auto h_numneigh = Kokkos::create_mirror_view(d_numneigh);
+  auto h_neighbors = Kokkos::create_mirror_view(d_neighbors);
+  auto h_ilist = Kokkos::create_mirror_view(d_ilist);
+  Kokkos::deep_copy(h_numneigh, d_numneigh);
+  Kokkos::deep_copy(h_neighbors, d_neighbors);
+  Kokkos::deep_copy(h_ilist, d_ilist);
+
+  // number of (i, j) neighbors
+  // TODO: atom-first indexing for GPU
+  n_pairs_ = 0;
+  for (int ii = 0; ii < inum_; ++ii) {
+    const SiteIdx i = h_ilist(ii);
+    n_pairs_ += h_numneigh(i);
+  }
+//  Kokkos::parallel_reduce("number of (i, j) neighbors", inum, KOKKOS_LAMBDA(const int& i, int& lsum){
+//    lsum += d_numneigh(i);
+//  }, n_pairs_);
+
+  // flatten half-neighbor list
+  // neighbor_pair_index and neighbor_pair_displacements
+  Kokkos::resize(neighbor_pair_index_kk_, n_pairs_);
+  Kokkos::resize(neighbor_pair_displacements_kk_, n_pairs_, 3);
+  auto h_neighbor_pair_index = neighbor_pair_index_kk_.view_host();
+  auto h_neighbor_pair_displacements = neighbor_pair_displacements_kk_.view_host();
+
+  NeighborPairIdx count_neighbor = 0;
+  for (int ii = 0; ii < inum_; ++ii) {
+    const SiteIdx i = h_ilist(ii);
+    const int num_neighbors_i = h_numneigh(i);
+    for (int jj = 0; jj < num_neighbors_i; ++jj) {
+      SiteIdx j = h_neighbors(i, jj);
       j &= NEIGHMASK;
-      delx = x[i][0] - x[j][0];
-      dely = x[i][1] - x[j][1];
-      delz = x[i][2] - x[j][2];
-      dis = sqrt(delx * delx + dely * dely + delz * delz);
-      if (dis < pot.get_feature_params().cutoff) {
-        evdwl = evdwl_array[ii][jj];
-        fx = fx_array[ii][jj];
-        fy = fy_array[ii][jj];
-        fz = fz_array[ii][jj];
-        f[i][0] += fx;
-        f[i][1] += fy;
-        f[i][2] += fz;
-        if (newton_pair || j < nlocal) {
-          f[j][0] -= fx;
-          f[j][1] -= fy;
-          f[j][2] -= fz;
-        }
-        if (evflag) {
-          ev_tally_xyz(i, j, nlocal, newton_pair,
-                       evdwl, ecoul, fx, fy, fz, delx, dely, delz);
-        }
-      }
+      const int tagi = tag[i] - 1;
+      const int tagj = tag[j] - 1;
+      h_neighbor_pair_index(count_neighbor) = Kokkos::pair<SiteIdx, SiteIdx>(tagi, tagj);
+      h_neighbor_pair_displacements(count_neighbor, 0) = x[tagj][0] - x[tagi][0];
+      h_neighbor_pair_displacements(count_neighbor, 1) = x[tagj][1] - x[tagi][1];
+      h_neighbor_pair_displacements(count_neighbor, 2) = x[tagj][2] - x[tagi][2];
+      ++count_neighbor;
     }
   }
-  if (vflag_fdotr) LAMMPS_NS::Pair::virial_fdotr_compute();
-}
+  neighbor_pair_index_kk_.modify_host();
+  neighbor_pair_displacements_kk_.modify_host();
+  neighbor_pair_index_kk_.sync_device();
+  neighbor_pair_displacements_kk_.sync_device();
 
-template<class DeviceType>
-void PairMLIPGtinvKokkos<DeviceType>::compute_energy_and_force_for_each_atom(const barray4dc &prod_anlm_f,
-                                                                             const barray4dc &prod_anlm_e,
-                                                                             const vector1d &scales,
-                                                                             int ii,
-                                                                             vector2d &evdwl_array,
-                                                                             vector2d &fx_array,
-                                                                             vector2d &fy_array,
-                                                                             vector2d &fz_array) {
-  int i, j, jnum, *jlist, type1, type2, tc, m, lm1, lm2;
-  double delx, dely, delz, dis, evdwl, fx, fy, fz,
-      costheta, sintheta, cosphi, sinphi, coeff, cc;
-  dc f1, ylm_dphi, d0, d1, d2, term1, term2, sume, sumf;
-
-  double **x = atom->x;
-  tagint *tag = atom->tag;
-
-  i = h_ilist(ii);
-  type1 = types[tag[i] - 1];
-  jnum = h_numneigh(i);
-
-  const int n_fn = pot.get_model_params().get_n_fn();
-  const int n_des = pot.get_model_params().get_n_des();
-  const int n_lm = pot.get_lm_info().size();
-  const int n_lm_all = 2 * n_lm - pot.get_feature_params().maxl - 1;
-  const int n_gtinv = pot.get_model_params().get_linear_term_gtinv().size();
-
-  vector1d fn, fn_d;
-  vector1dc ylm, ylm_dtheta;
-  vector2dc fn_ylm, fn_ylm_dx, fn_ylm_dy, fn_ylm_dz;
-
-  fn_ylm = fn_ylm_dx = fn_ylm_dy = fn_ylm_dz
-      = vector2dc(n_fn, vector1dc(n_lm_all));
-
-  for (int jj = 0; jj < jnum; jj++) {
-    j = h_neighbors(i, jj);
-    j &= NEIGHMASK;
-    delx = x[i][0] - x[j][0];
-    dely = x[i][1] - x[j][1];
-    delz = x[i][2] - x[j][2];
-    dis = sqrt(delx * delx + dely * dely + delz * delz);
-
-    if (dis < pot.get_feature_params().cutoff) {
-      type2 = types[tag[j] - 1];
-
-      const vector1d &sph
-          = cartesian_to_spherical(vector1d{delx, dely, delz});
-      get_fn(dis, pot.get_feature_params(), fn, fn_d);
-      get_ylm(sph, pot.get_lm_info(), ylm, ylm_dtheta);
-
-      costheta = cos(sph[0]), sintheta = sin(sph[0]);
-      cosphi = cos(sph[1]), sinphi = sin(sph[1]);
-      fabs(sintheta) > 1e-15 ?
-      (coeff = 1.0 / sintheta) : (coeff = 0);
-      for (int lm = 0; lm < n_lm; ++lm) {
-        m = pot.get_lm_info()[lm][1], lm1 = pot.get_lm_info()[lm][2],
-        lm2 = pot.get_lm_info()[lm][3];
-        cc = pow(-1, m);
-        ylm_dphi = dc{0.0, 1.0} * double(m) * ylm[lm];
-        term1 = ylm_dtheta[lm] * costheta;
-        term2 = coeff * ylm_dphi;
-        d0 = term1 * cosphi - term2 * sinphi;
-        d1 = term1 * sinphi + term2 * cosphi;
-        d2 = -ylm_dtheta[lm] * sintheta;
-        for (int n = 0; n < n_fn; ++n) {
-          fn_ylm[n][lm1] = fn[n] * ylm[lm];
-          fn_ylm[n][lm2] = cc * std::conj(fn_ylm[n][lm1]);
-          f1 = fn_d[n] * ylm[lm];
-          fn_ylm_dx[n][lm1] = -(f1 * delx + fn[n] * d0) / dis;
-          fn_ylm_dx[n][lm2] = cc * std::conj(fn_ylm_dx[n][lm1]);
-          fn_ylm_dy[n][lm1] = -(f1 * dely + fn[n] * d1) / dis;
-          fn_ylm_dy[n][lm2] = cc * std::conj(fn_ylm_dy[n][lm1]);
-          fn_ylm_dz[n][lm1] = -(f1 * delz + fn[n] * d2) / dis;
-          fn_ylm_dz[n][lm2] = cc * std::conj(fn_ylm_dz[n][lm1]);
-        }
-      }
-
-      const int tc0 = get_type_comb()[type1][type2];
-      const auto &prodif = prod_anlm_f[tc0][tag[i] - 1];
-      const auto &prodie = prod_anlm_e[tc0][tag[i] - 1];
-      const auto &prodjf = prod_anlm_f[tc0][tag[j] - 1];
-      const auto &prodje = prod_anlm_e[tc0][tag[j] - 1];
-
-      evdwl = 0.0, fx = 0.0, fy = 0.0, fz = 0.0;
-      // including polynomial correction
-      for (int n = 0; n < n_fn; ++n) {
-        for (int lm0 = 0; lm0 < n_lm_all; ++lm0) {
-          sume = prodie[n][lm0] + prodje[n][lm0] * scales[lm0];
-          sumf = prodif[n][lm0] + prodjf[n][lm0] * scales[lm0];
-          evdwl += prod_real(fn_ylm[n][lm0], sume);
-          fx += prod_real(fn_ylm_dx[n][lm0], sumf);
-          fy += prod_real(fn_ylm_dy[n][lm0], sumf);
-          fz += prod_real(fn_ylm_dz[n][lm0], sumf);
-        }
-      }
-      evdwl_array[ii][jj] = evdwl;
-      fx_array[ii][jj] = fx;
-      fy_array[ii][jj] = fy;
-      fz_array[ii][jj] = fz;
-    }
+  // neighbor_pair_typecomb
+  Kokkos::resize(neighbor_pair_typecomb_kk_, n_pairs_);
+  auto h_neighbor_pair_typecomb = neighbor_pair_typecomb_kk_.view_host();
+  for (NeighborPairIdx npidx = 0; npidx < n_pairs_; ++npidx) {
+    const auto &ij = h_neighbor_pair_index(npidx);
+    const SiteIdx i = ij.first; // is tag[i] - 1
+    const SiteIdx j = ij.second; // is tag[j] - 1
+    const ElementType type_i = types[i];
+    const ElementType type_j = types[j];
+    h_neighbor_pair_typecomb(npidx) = type_pairs_kk_.h_view(type_i, type_j);
   }
-}
+  neighbor_pair_typecomb_kk_.modify_host();
+  neighbor_pair_typecomb_kk_.sync_device();
 
-/// @param[out] prod_anlm_f
-/// @param[out] prod_anlm_e
-template<class DeviceType>
-void PairMLIPGtinvKokkos<DeviceType>::compute_partial_anlm_product_for_each_atom(const int n_fn,
-                                                                                 const int n_lm_all,
-                                                                                 const barray4dc &anlm,
-                                                                                 int ii,
-                                                                                 barray4dc &prod_anlm_f,
-                                                                                 barray4dc &prod_anlm_e) {
-  tagint *tag = atom->tag;
-  int i = h_ilist(ii);
-  int type1 = types[tag[i] - 1];
-
-  // precompute partial a_nlm product for linear terms
-  const int n_gtinv = pot.get_model_params().get_linear_term_gtinv().size();
-  const vector2dc &uniq = compute_anlm_uniq_products(type1, anlm[tag[i] - 1]);
-
-  // precompute partial a_nlm product for polynomial terms
-  vector1d uniq_p;
-  if (pot.get_feature_params().maxp > 1) {
-    uniq_p = compute_polynomial_model_uniq_products(type1, anlm[tag[i] - 1], uniq);
+  // types
+  Kokkos::resize(types_kk_, inum_);
+  auto h_types = types_kk_.view_host();
+  for (int ii = 0; ii < inum_; ++ii) {
+    const SiteIdx i = h_ilist(ii); // h_ilst(ii) = ii = tag[ii]-1
+    types_kk_.h_view(i) = types[i];
   }
+  types_kk_.modify_host();
+  types_kk_.sync_device();
 
-  // compute prod_anlm_f and prod_anlm_e
-  for (int type2 = 0; type2 < pot.get_feature_params().n_type; ++type2) {
-    const int tc0 = get_type_comb()[type1][type2];
+  // resize views
+  // TODO: move resizes to hide allocation time
+  Kokkos::resize(d_distance_, n_pairs_);
+  Kokkos::resize(d_fn_, n_pairs_, n_fn_);
+  Kokkos::resize(d_fn_der_, n_pairs_, n_fn_);
+  Kokkos::resize(d_alp_, n_pairs_, n_lm_half_);
+  Kokkos::resize(d_alp_sintheta_, n_pairs_, n_lm_half_);
+  Kokkos::resize(d_ylm_, n_pairs_, n_lm_half_);
+  Kokkos::resize(d_ylm_dx_, n_pairs_, n_lm_half_);
+  Kokkos::resize(d_ylm_dy_, n_pairs_, n_lm_half_);
+  Kokkos::resize(d_ylm_dz_, n_pairs_, n_lm_half_);
 
-    for (int n = 0; n < n_fn; ++n) {
-      for (int lm0 = 0; lm0 < n_lm_all; ++lm0) {
-        dc sumf(0.0), sume(0.0);
-        compute_anlm_linear_term(n_gtinv, tc0, n, lm0, uniq, sumf, sume);
-        // polynomial model correction for sumf and sume
-        compute_anlm_polynomial_model_correction(uniq_p, tc0, n, lm0, uniq, sumf, sume);
+  Kokkos::resize(d_anlm_r_, inum_, n_types_, n_fn_, n_lm_half_);
+  Kokkos::resize(d_anlm_i_, inum_, n_types_, n_fn_, n_lm_half_);
+  Kokkos::resize(d_anlm_, inum_, n_types_, n_fn_, n_lm_all_);
+  Kokkos::resize(structural_features_kk_, inum_, n_des_);
+  Kokkos::resize(d_polynomial_adjoints_, inum_, n_des_);
+  Kokkos::resize(d_basis_function_adjoints_, inum_, n_typecomb_, n_fn_, n_lm_half_);
 
-        prod_anlm_f[tc0][tag[i] - 1][n][lm0] = sumf;
-        prod_anlm_e[tc0][tag[i] - 1][n][lm0] = sume;
-      }
-    }
-  }
+  Kokkos::resize(site_energy_kk_, inum_);
+  Kokkos::resize(forces_kk_, inum_, 3);
+
+  Kokkos::fence();
 }
+} // namespace MLIP
 
-/// @brief compute order parameters a_{nlm}
-/// @return anlm (inum, n_type, n_fn, n_lm_all)
-///         n_type is # of elements. n_fn is # of basis functions.
-///         n_lm_all is # of (l, m), equal to (l_max + 1)^2
-template<class DeviceType>
-barray4dc PairMLIPGtinvKokkos<DeviceType>::compute_anlm() {
-
-  const int n_fn = pot.get_model_params().get_n_fn();
-  const int n_lm = pot.get_lm_info().size();
-  const int n_lm_all = 2 * n_lm - pot.get_feature_params().maxl - 1;
-  const int n_type = pot.get_feature_params().n_type;
-
-  int inum = list->inum;
-  int nlocal = atom->nlocal;
-  int newton_pair = force->newton_pair;
-
-  barray4dc anlm(boost::extents[inum][n_type][n_fn][n_lm_all]);
-  barray4d anlm_r(boost::extents[inum][n_type][n_fn][n_lm]);
-  barray4d anlm_i(boost::extents[inum][n_type][n_fn][n_lm]);
-  std::fill(anlm_r.data(), anlm_r.data() + anlm_r.num_elements(), 0.0);
-  std::fill(anlm_i.data(), anlm_i.data() + anlm_i.num_elements(), 0.0);
-
-#ifdef _OPENMP
-#pragma omp parallel for schedule(guided)
-#endif
-  for (int ii = 0; ii < inum; ii++) {
-    int i, j, type1, type2, jnum, sindex, *ilist, *jlist;
-    double delx, dely, delz, dis, scale;
-
-    double **x = atom->x;
-    tagint *tag = atom->tag;
-
-    i = h_ilist(ii);
-    type1 = types[tag[i] - 1];
-    jnum = h_numneigh(i);
-
-    vector1d fn;
-    vector1dc ylm;
-    dc val;
-    for (int jj = 0; jj < jnum; ++jj) {
-      j = h_neighbors(i, jj);
-      j &= NEIGHMASK;
-      delx = x[i][0] - x[j][0];
-      dely = x[i][1] - x[j][1];
-      delz = x[i][2] - x[j][2];
-      dis = sqrt(delx * delx + dely * dely + delz * delz);
-      if (dis < pot.get_feature_params().cutoff) {
-        type2 = types[tag[j] - 1];
-        const vector1d &sph
-            = cartesian_to_spherical(vector1d{delx, dely, delz});
-        get_fn(dis, pot.get_feature_params(), fn);
-        get_ylm(sph, pot.get_lm_info(), ylm);
-        for (int n = 0; n < n_fn; ++n) {
-          for (int lm = 0; lm < n_lm; ++lm) {
-            if (pot.get_lm_info()[lm][0] % 2 == 0) scale = 1.0;
-            else scale = -1.0;
-            val = fn[n] * ylm[lm];
-#ifdef _OPENMP
-#pragma omp atomic
-#endif
-            anlm_r[tag[i] - 1][type2][n][lm] += val.real();
-#ifdef _OPENMP
-#pragma omp atomic
-#endif
-            anlm_r[tag[j] - 1][type1][n][lm] += val.real() * scale;
-#ifdef _OPENMP
-#pragma omp atomic
-#endif
-            anlm_i[tag[i] - 1][type2][n][lm] += val.imag();
-#ifdef _OPENMP
-#pragma omp atomic
-#endif
-            anlm_i[tag[j] - 1][type1][n][lm] += val.imag() * scale;
-          }
-        }
-      }
-    }
-  }
-
-#ifdef _OPENMP
-#pragma omp parallel for schedule(guided)
-#endif
-  for (int ii = 0; ii < inum; ii++) {
-    int m, lm1, lm2;
-    double cc;
-    for (int type2 = 0; type2 < n_type; ++type2) {
-      for (int n = 0; n < n_fn; ++n) {
-        for (int lm = 0; lm < n_lm; ++lm) {
-          m = pot.get_lm_info()[lm][1];
-          lm1 = pot.get_lm_info()[lm][2], lm2 = pot.get_lm_info()[lm][3];
-          anlm[ii][type2][n][lm1] =
-              {anlm_r[ii][type2][n][lm], anlm_i[ii][type2][n][lm]};
-          cc = pow(-1, m);
-          anlm[ii][type2][n][lm2] =
-              {cc * anlm_r[ii][type2][n][lm],
-               -cc * anlm_i[ii][type2][n][lm]};
-        }
-      }
-    }
-  }
-  return anlm;
-}
-
-}
-#endif //LAMMPS_MLIP_PACKAGE_SRC_USER_MLIP_PAIR_MLIP_GTINV_KOKKOS_IMPL_H_
+#endif //LMP_PAIR_MLIP_GTINV_KOKKOS_IMPL_H_
