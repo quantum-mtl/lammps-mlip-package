@@ -40,6 +40,9 @@ class PairMLIPGtinvKokkos : public PairMLIPGtinv {
   void allocate();
 
  protected:
+  typename AT::t_x_array_randomread x;
+  typename AT::t_f_array f;
+
   typename AT::t_neighbors_2d d_neighbors;
   typename AT::t_int_1d_randomread d_ilist;
   typename AT::t_int_1d_randomread d_numneigh;
@@ -71,6 +74,7 @@ class PairMLIPGtinvKokkos : public PairMLIPGtinv {
   typename MLIP_NS::MLIPModel model;
   template<class PairStyle, class NeighListKokkos>
   friend void MLIP_NS::MLIPModel::set_structure_lmp(PairStyle *fpair, NeighListKokkos* k_list);
+  friend void pair_virial_fdotr_compute<PairMLIPGtinvKokkos>(PairMLIPGtinvKokkos*);
 };
 } // namespace LAMMPS
 

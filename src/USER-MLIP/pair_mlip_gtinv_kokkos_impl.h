@@ -145,6 +145,9 @@ void PairMLIPGtinvKokkos<DeviceType>::compute(int eflag_in, int vflag_in) {
 
   ev_init(eflag, vflag, 0);
 
+  x = atomKK->k_x.view<DeviceType>();
+  f = atomKK->k_f.view<DeviceType>();
+
   NeighListKokkos<DeviceType> *k_list = static_cast<NeighListKokkos<DeviceType> *>(list);
   d_numneigh = k_list->d_numneigh;
   d_neighbors = k_list->d_neighbors;
@@ -160,6 +163,10 @@ void PairMLIPGtinvKokkos<DeviceType>::compute(int eflag_in, int vflag_in) {
     model.compute();
     // TODO: UPDATE F, Energy, Virial
   }
+
+  if (eflag_global) eng_vdwl += model.get_energy();
+  if (vflag_fdotr) pair_virial_fdotr_compute(this);
+
   atomKK->modified(execution_space, datamask_modify);
 
   copymode = 0;
@@ -214,9 +221,9 @@ void MLIPModel::set_structure_lmp(PairStyle *fpair, NeighListKokkos* k_list) {
       const int tagi = tag[i] - 1;
       const int tagj = tag[j] - 1;
       h_neighbor_pair_index(count_neighbor) = Kokkos::pair<SiteIdx, SiteIdx>(tagi, tagj);
-      h_neighbor_pair_displacements(count_neighbor, 0) = x[tagj][0] - x[tagi][0];
-      h_neighbor_pair_displacements(count_neighbor, 1) = x[tagj][1] - x[tagi][1];
-      h_neighbor_pair_displacements(count_neighbor, 2) = x[tagj][2] - x[tagi][2];
+      h_neighbor_pair_displacements(count_neighbor, 0) = x[j][0] - x[i][0];
+      h_neighbor_pair_displacements(count_neighbor, 1) = x[j][1] - x[i][1];
+      h_neighbor_pair_displacements(count_neighbor, 2) = x[j][2] - x[i][2];
       ++count_neighbor;
     }
   }
