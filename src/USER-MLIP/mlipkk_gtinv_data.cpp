@@ -21,17 +21,17 @@
 
 *****************************************************************************/
 
-#include "mlip_gtinv_data.h"
+#include "mlipkk_gtinv_data.h"
 
 #include <algorithm>
 
 namespace MLIP_NS {
 
-GtinvData::GtinvData(){
+GtinvDataKK::GtinvDataKK(){
     set_gtinv_info();
 }
 
-void GtinvData::set_gtinv_info(){
+void GtinvDataKK::set_gtinv_info(){
 
     l_array_all =
         {{0},

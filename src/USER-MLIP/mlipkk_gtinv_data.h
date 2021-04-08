@@ -30,14 +30,14 @@
 
 namespace MLIP_NS {
 
-class GtinvData{
+class GtinvDataKK{
     vector2i l_array_all;
     vector3i m_array_all;
     vector2d coeffs_all;
 
 public:
-    GtinvData();
-   ~GtinvData() = default;
+    GtinvDataKK();
+   ~GtinvDataKK() = default;
 
     /*
     Table of sets of angular numbers corresponding to all symmetry Irreps.

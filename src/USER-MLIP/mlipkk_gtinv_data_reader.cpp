@@ -18,7 +18,7 @@ Readgtinv::Readgtinv(const int& gtinv_order, const vector1i& gtinv_maxl,
 /// @param[in] gtinv_sym
 void Readgtinv::screening(const int& gtinv_order, const vector1i& gtinv_maxl,
                           const std::vector<bool>& gtinv_sym){
-    MLIP_NS::GtinvData data;
+    MLIP_NS::GtinvDataKK data;
     const vector2i l_array_all = data.get_l_array();
     const vector3i m_array_all = data.get_m_array();
     const vector2d coeffs_all = data.get_coeffs();
