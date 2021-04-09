@@ -148,6 +148,8 @@ public:
                        const vector3d& displacements, const std::vector<std::vector<SiteIdx>>& neighbors);
     template<class PairStyle, class NeighListKokkos>
     void set_structure_lmp(PairStyle *fpair, NeighListKokkos* k_list);
+    template<class PairStyle>
+    void get_forces_lmp(PairStyle *fpair);
     void compute();
     void prepare_features();
 

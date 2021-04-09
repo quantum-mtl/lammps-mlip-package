@@ -165,6 +165,7 @@ void PairMLIPGtinvKokkos<DeviceType>::compute(int eflag_in, int vflag_in) {
   }
 
   if (eflag_global) eng_vdwl += model.get_energy();
+  model.get_forces_lmp<PairMLIPGtinvKokkos<DeviceType>>(this);
   if (vflag_fdotr) pair_virial_fdotr_compute(this);
 
   atomKK->modified(execution_space, datamask_modify);
@@ -279,6 +280,29 @@ void MLIPModel::set_structure_lmp(PairStyle *fpair, NeighListKokkos* k_list) {
   Kokkos::resize(forces_kk_, inum_, 3);
 
   Kokkos::fence();
+}
+template<class PairStyle>
+void MLIPModel::get_forces_lmp(PairStyle *fpair) {
+  // Kokkos::deep_copy(fpair->f, forces_kk_.d_view); // E:1397 vs 32
+//  const auto d_forces = forces_kk_.view_device();
+//  Kokkos::parallel_for(
+//      "fcopy", range_policy(0, inum_),
+//      KOKKOS_LAMBDA(const int i) {
+//        fpair->f(i, 0) = d_forces(i, 0);
+//        fpair->f(i, 1) = d_forces(i, 1);
+//        fpair->f(i, 2) = d_forces(i, 2);
+//      });
+//  Kokkos::fence();
+  forces_kk_.sync_host();
+  const auto h_forces = forces_kk_.view_host();
+  auto h_f = fpair->atomKK->k_f.view_host();
+  for (SiteIdx i = 0; i < inum_; ++i) {
+    h_f(i, 0) = h_forces(i, 0);
+    h_f(i, 1) = h_forces(i, 1);
+    h_f(i, 2) = h_forces(i, 2);
+  }
+  fpair->atomKK->k_f.modify_host();
+  fpair->atomKK->k_f.sync_device();
 }
 } // namespace MLIP
 

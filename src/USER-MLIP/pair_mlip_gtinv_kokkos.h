@@ -33,7 +33,7 @@ class PairMLIPGtinvKokkos : public PairMLIPGtinv {
   PairMLIPGtinvKokkos(class LAMMPS *);
   virtual ~PairMLIPGtinvKokkos();
 
-  void coeff(int, char**);
+  void coeff(int, char **);
   void init_style();
   void compute(int, int);
   double init_one(int, int);
@@ -58,13 +58,13 @@ class PairMLIPGtinvKokkos : public PairMLIPGtinv {
 
   int neighflag;
 
-  Kokkos::View<T_INT*, DeviceType> d_map;                    // mapping from atom types to elements
+  Kokkos::View<T_INT *, DeviceType> d_map;                    // mapping from atom types to elements
 
-  typedef Kokkos::DualView<F_FLOAT**, DeviceType> tdual_fparams;
+  typedef Kokkos::DualView<F_FLOAT **, DeviceType> tdual_fparams;
   tdual_fparams k_cutsq;
   typedef Kokkos::View<const F_FLOAT **, DeviceType, Kokkos::MemoryTraits<Kokkos::RandomAccess>> t_fparams_rnd;
   t_fparams_rnd rnd_cutsq;
-  
+
   // ---- for mlipkk ----
   std::vector<std::string> ele;
   typename MLIP_NS::vector1d mass;
@@ -73,8 +73,10 @@ class PairMLIPGtinvKokkos : public PairMLIPGtinv {
   typename MLIP_NS::Readgtinv gtinvdata;
   typename MLIP_NS::MLIPModel model;
   template<class PairStyle, class NeighListKokkos>
-  friend void MLIP_NS::MLIPModel::set_structure_lmp(PairStyle *fpair, NeighListKokkos* k_list);
-  friend void pair_virial_fdotr_compute<PairMLIPGtinvKokkos>(PairMLIPGtinvKokkos*);
+  friend void MLIP_NS::MLIPModel::set_structure_lmp(PairStyle *fpair, NeighListKokkos *k_list);
+  friend void pair_virial_fdotr_compute<PairMLIPGtinvKokkos>(PairMLIPGtinvKokkos *);
+  template<class PairStyle>
+  friend void MLIP_NS::MLIPModel::get_forces_lmp(PairStyle *fpair);
 };
 } // namespace LAMMPS
 
