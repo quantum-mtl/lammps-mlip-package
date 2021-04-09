@@ -166,7 +166,14 @@ void PairMLIPGtinvKokkos<DeviceType>::compute(int eflag_in, int vflag_in) {
 
   if (eflag_global) eng_vdwl += model.get_energy();
   model.get_forces_lmp<PairMLIPGtinvKokkos<DeviceType>>(this);
-  if (vflag_fdotr) pair_virial_fdotr_compute(this);
+  if (vflag_fdotr) vflag_fdotr=0;//pair_virial_fdotr_compute(this);
+  const std::vector<double> tmp_stress = model.get_stress();
+  virial[0] = tmp_stress[0];
+  virial[1] = tmp_stress[1];
+  virial[2] = tmp_stress[2];
+  virial[3] = tmp_stress[3];
+  virial[4] = tmp_stress[4];
+  virial[5] = tmp_stress[5];
 
   atomKK->modified(execution_space, datamask_modify);
 
