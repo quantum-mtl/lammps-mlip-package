@@ -51,9 +51,9 @@ PairMLIPGtinvKokkos<DeviceType>::~PairMLIPGtinvKokkos() {
   if (copymode) return;
 //  memoryKK->destroy_kokkos(k_eatom, eatom);
 //  memoryKK->destroy_kokkos(k_vatom, vatom);
-  std::cerr << "#######################\n";
-  std::cerr << "# ~PairMLIPPairKokkos #\n";
-  std::cerr << "#######################\n";
+  std::cerr << "########################\n";
+  std::cerr << "# ~PairMLIPGtinvKokkos #\n";
+  std::cerr << "########################\n";
 }
 
 template<class DeviceType>
@@ -190,8 +190,9 @@ void MLIPModel::set_structure_lmp(PairStyle *fpair, NeighListKokkos* k_list) {
   auto d_neighbors = k_list->d_neighbors;
   auto d_ilist = k_list->d_ilist;
   inum_ = k_list->inum;
-  double **x = fpair->atom->x;
-  LAMMPS_NS::tagint *tag = fpair->atom->tag;
+  auto h_x = fpair->atomKK->k_x.view_host();
+//  LAMMPS_NS::tagint *tag = fpair->atom->tag;
+  auto h_tag = fpair->atomKK->k_tag.view_host();
   const std::vector<ElementType> &types = fpair->types;
 
   auto h_numneigh = Kokkos::create_mirror_view(d_numneigh);
@@ -226,12 +227,12 @@ void MLIPModel::set_structure_lmp(PairStyle *fpair, NeighListKokkos* k_list) {
     for (int jj = 0; jj < num_neighbors_i; ++jj) {
       SiteIdx j = h_neighbors(i, jj);
       j &= NEIGHMASK;
-      const int tagi = tag[i] - 1;
-      const int tagj = tag[j] - 1;
+      const int tagi = h_tag(i) - 1;
+      const int tagj = h_tag(j) - 1;
       h_neighbor_pair_index(count_neighbor) = Kokkos::pair<SiteIdx, SiteIdx>(tagi, tagj);
-      h_neighbor_pair_displacements(count_neighbor, 0) = x[j][0] - x[i][0];
-      h_neighbor_pair_displacements(count_neighbor, 1) = x[j][1] - x[i][1];
-      h_neighbor_pair_displacements(count_neighbor, 2) = x[j][2] - x[i][2];
+      h_neighbor_pair_displacements(count_neighbor, 0) = h_x(j, 0) - h_x(i, 0);
+      h_neighbor_pair_displacements(count_neighbor, 1) = h_x(j, 1) - h_x(i, 1);
+      h_neighbor_pair_displacements(count_neighbor, 2) = h_x(j, 2) - h_x(i, 2);
       ++count_neighbor;
     }
   }
@@ -258,7 +259,7 @@ void MLIPModel::set_structure_lmp(PairStyle *fpair, NeighListKokkos* k_list) {
   Kokkos::resize(types_kk_, inum_);
   auto h_types = types_kk_.view_host();
   for (int ii = 0; ii < inum_; ++ii) {
-    const SiteIdx i = h_ilist(ii); // h_ilst(ii) = ii = tag[ii]-1
+    const SiteIdx i = h_ilist(ii);
     types_kk_.h_view(i) = types[i];
   }
   types_kk_.modify_host();
@@ -303,10 +304,15 @@ void MLIPModel::get_forces_lmp(PairStyle *fpair) {
   forces_kk_.sync_host();
   const auto h_forces = forces_kk_.view_host();
   auto h_f = fpair->atomKK->k_f.view_host();
-  for (SiteIdx i = 0; i < inum_; ++i) {
-    h_f(i, 0) = h_forces(i, 0);
-    h_f(i, 1) = h_forces(i, 1);
-    h_f(i, 2) = h_forces(i, 2);
+  auto h_ilist = Kokkos::create_mirror_view(fpair->d_ilist);
+  auto h_tag = fpair->atomKK->k_tag.view_host();
+  Kokkos::deep_copy(h_ilist, fpair->d_ilist);
+  for (SiteIdx ii = 0; ii < inum_; ++ii) {
+    const int i = h_ilist(ii);
+    const int tagi = h_tag(i)-1;
+    h_f(i, 0) = h_forces(tagi, 0);
+    h_f(i, 1) = h_forces(tagi, 1);
+    h_f(i, 2) = h_forces(tagi, 2);
   }
   fpair->atomKK->k_f.modify_host();
   fpair->atomKK->k_f.sync_device();
