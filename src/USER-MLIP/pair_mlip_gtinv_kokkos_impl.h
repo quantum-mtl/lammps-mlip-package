@@ -291,16 +291,6 @@ void MLIPModel::set_structure_lmp(PairStyle *fpair, NeighListKokkos* k_list) {
 }
 template<class PairStyle>
 void MLIPModel::get_forces_lmp(PairStyle *fpair) {
-  // Kokkos::deep_copy(fpair->f, forces_kk_.d_view); // E:1397 vs 32
-//  const auto d_forces = forces_kk_.view_device();
-//  Kokkos::parallel_for(
-//      "fcopy", range_policy(0, inum_),
-//      KOKKOS_LAMBDA(const int i) {
-//        fpair->f(i, 0) = d_forces(i, 0);
-//        fpair->f(i, 1) = d_forces(i, 1);
-//        fpair->f(i, 2) = d_forces(i, 2);
-//      });
-//  Kokkos::fence();
   forces_kk_.sync_host();
   const auto h_forces = forces_kk_.view_host();
   auto h_f = fpair->atomKK->k_f.view_host();
@@ -309,7 +299,7 @@ void MLIPModel::get_forces_lmp(PairStyle *fpair) {
   Kokkos::deep_copy(h_ilist, fpair->d_ilist);
   for (SiteIdx ii = 0; ii < inum_; ++ii) {
     const int i = h_ilist(ii);
-    const int tagi = h_tag(i)-1;
+    const int tagi = h_tag(i) - 1;
     h_f(i, 0) = h_forces(tagi, 0);
     h_f(i, 1) = h_forces(tagi, 1);
     h_f(i, 2) = h_forces(tagi, 2);
