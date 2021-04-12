@@ -158,11 +158,10 @@ void PairMLIPGtinvKokkos<DeviceType>::compute(int eflag_in, int vflag_in) {
   // required when classes are used as functors by Kokkos
 
   atomKK->sync(Host, datamask_read);
-  { // MLIP_NS compute
-    model.set_structure_lmp<PairMLIPGtinvKokkos<DeviceType>, NeighListKokkos<DeviceType>>(this, k_list);
-    model.compute();
-    // TODO: UPDATE F, Energy, Virial
-  }
+
+  // MLIP_NS compute
+  model.set_structure_lmp<PairMLIPGtinvKokkos<DeviceType>, NeighListKokkos<DeviceType>>(this, k_list);
+  model.compute();
 
   if (eflag_global) eng_vdwl += model.get_energy();
   model.get_forces_lmp<PairMLIPGtinvKokkos<DeviceType>>(this);
