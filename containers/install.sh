@@ -18,9 +18,9 @@ cp -r "${lammps_mlip_root}/lib/mlip" "${lammps_root}/lib"
 cp -r "${lammps_mlip_root}/src/USER-MLIP" "${lammps_root}/src"
 
 # modify Makefile
-cp "${lammps_mlip_root}/docker/Makefile.lammps" "${lammps_root}/lib/mlip/Makefile.lammps"
-cp "${lammps_mlip_root}/docker/Makefile" "${lammps_root}/src/Makefile"
-cp "${lammps_mlip_root}/docker/Makefile.mlip_kokkos" "${lammps_root}/src/MAKE/Makefile.mlip_kokkos"
+cp "${lammps_mlip_root}/containers/Makefile.lammps" "${lammps_root}/lib/mlip/Makefile.lammps"
+cp "${lammps_mlip_root}/containers/Makefile" "${lammps_root}/src/Makefile"
+cp "${lammps_mlip_root}/containers/Makefile.mlip_kokkos" "${lammps_root}/src/MAKE/Makefile.mlip_kokkos"
 
 # make
 curr="$(pwd)"

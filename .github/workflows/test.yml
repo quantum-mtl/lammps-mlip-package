@@ -36,7 +36,7 @@ jobs:
         sudo apt install -y cmake libboost-all-dev gcc g++ libopenmpi-dev python3
     - name: make
       run: |
-        sh docker/install.sh 4
+        sh containers/install.sh 4
     - name: regression test
       run: |
         cd test/regression

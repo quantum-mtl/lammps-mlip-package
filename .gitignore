@@ -39,3 +39,4 @@ log.lammps
 googletest
 *DS_Store
 .vscode
+*.sif

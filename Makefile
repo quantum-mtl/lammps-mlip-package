@@ -10,7 +10,7 @@
 ###############################################################################
 IMAGE_NAME = lammps
 CONTAINER_NAME = lammps
-DOCKERFILE = ./docker/Dockerfile
+DOCKERFILE = ./containers/Dockerfile
 PWD = `pwd`
 
 ###############################################################################
@@ -48,7 +48,7 @@ test-unit:  ## do unit testing
 	ctest -vv
 
 test-regression: clean-lammps ## do regression test
-	sh ./docker/install.sh 32
+	sh ./containers/install.sh 32
 	@if [ -f ./lammps/src/lmp_mlip_kokkos ]; then \
 		cd test/regression; \
 			python3 regression.py; \
