@@ -43,29 +43,45 @@ make serial -j 36
 ### (2) Run lammps-mlip in docker
 1. Serial or OpenMP
 ```shell
-docker build -t lammps -f docker/Dockerfile .
-docker run -it -v $(PWD):/workspace -t lammps
+docker build -t lammps -f containers/Dockerfile .
+docker run -it -v $(pwd):/workspace -t lammps
 ```
 
 In `lammps` container (replace `8` with the appropriate number of cores)
 ```
 cd /workspace
-./docker/install.sh 8
+./containers/install.sh 8
 ```
 Now `lmp_mlip_kokkos` is built under `/workspace`.
 
 2. Cuda
 ```shell
-docker build -t lammps-gpu -f docker/Dockerfile.gpu .
-docker run -it -v $(PWD):/workspace -t lammps-gpu
+docker build -t lammps-gpu -f containers/Dockerfile.gpu .
+docker run -it -v $(pwd):/workspace -t lammps-gpu
 ```
 
 In `lammps-gpu` container (replace `8` with the appropriate number of cores)
 ```
 cd /workspace
-KOKKOS_DEVICES=Cuda ./docker/install.sh 8
+KOKKOS_DEVICES=Cuda ./containers/install.sh 8
 ```
 Now `lmp_mlip_kokkos` is built under `/workspace`.
+
+### (3) Singulairty container
+```
+singularity build --fakeroot mlip.sif containers/ubuntu_nvidia.def
+singularity run --nv mlip.sif
+```
+
+Now you are in singularity container:
+```
+KOKKOS_DEVICES=Cuda ./containers/install.sh 8
+```
+
+For example
+```
+mpirun -np 2 ../../lmp_mlip_kokkos -kokkos on gpus 2 -suffix kk -in in.lj
+```
 
 ## Lammps input commands to specify a machine learning potential
 
@@ -98,7 +114,7 @@ make create-container
 Build LAMMPS (after attaching a docker container)
 ```
 cd workspace
-sh ./docker/install.sh
+sh ./containers/install.sh
 ```
 
 ### Unit test

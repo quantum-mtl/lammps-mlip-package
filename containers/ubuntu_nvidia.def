@@ -1,0 +1,18 @@
+BootStrap: docker
+From: nvidia/cuda:11.2.1-devel-ubuntu20.04
+
+%post
+    export DEBIAN_FRONTEND=noninteractive
+    apt-get update -y
+    apt-get install -y --no-install-recommends --fix-missing \
+        make \
+        cmake \
+        gcc \
+        g++ \
+        libboost-all-dev \
+        bc \
+        libomp-dev \
+        git
+
+%environment
+    export LC_ALL=C
