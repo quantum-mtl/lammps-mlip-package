@@ -1,4 +1,4 @@
-#include "mlipkk_kokkos.h"
+#include "mlipkk.h"
 
 #include <iostream>
 #include <vector>

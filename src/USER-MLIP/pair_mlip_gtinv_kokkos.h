@@ -18,7 +18,7 @@ PairStyle(mlip_gtinv/kk/host,PairMLIPGtinvKokkos<LMPHostType>)
 #include "neigh_list_kokkos.h"
 
 #include "pair_mlip_gtinv.h"
-#include "mlipkk_kokkos.h"
+#include "mlipkk.h"
 #include "mlipkk_types.h"
 
 namespace LAMMPS_NS {
