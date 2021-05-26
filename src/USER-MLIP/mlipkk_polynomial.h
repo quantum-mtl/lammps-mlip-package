@@ -1,6 +1,7 @@
 #ifndef MLIPKK_POLYNOMIAL_H_
 #define MLIPKK_POLYNOMIAL_H_
 
+#include <iostream>
 #include <vector>
 #include <map>
 
@@ -51,10 +52,11 @@ public:
     int get_n_des() const { return n_fn_ * n_itc_; };
     int get_n_itc() const { return n_itc_; };
 
+    void dump(std::ostream& os, const FeatureIdx fidx) const;
 };
 
 
 
 } // namespace MLIP_NS
 
-#endif //MLIPKK_POLYNOMIAL_H_
+#endif // MLIPKK_POLYNOMIAL_H_

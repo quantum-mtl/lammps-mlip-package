@@ -51,7 +51,7 @@ std::vector<IrrepsTypePair> get_unique_irreps_type_pairs(int n_types,
     int num_type_combs = n_types * (n_types + 1) / 2;
     const auto type_pairs_mapping = get_type_pairs_mapping(n_types);
 
-    int max_order = l_array[static_cast<int>(l_array.size()) - 1].size();
+    int max_order = static_cast<int>(l_array[static_cast<int>(l_array.size()) - 1].size());
     std::vector<std::vector<std::vector<TypeCombIdx>>> uniq_type_combs(max_order);
     for (int order = 1; order <= max_order; ++order) {
         std::vector<std::vector<TypeCombIdx>> all_combs = get_combinations_with_repetition(num_type_combs, order);

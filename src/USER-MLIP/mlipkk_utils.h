@@ -1,5 +1,5 @@
-#ifndef MLIP_UTILS_H
-#define MLIP_UTILS_H
+#ifndef MLIPKK_UTILS_H_
+#define MLIPKK_UTILS_H_
 
 #include <vector>
 #include <string>
@@ -53,4 +53,4 @@ std::vector<T> get_value_array
 
 } // namespace MLIP_NS
 
-#endif
+#endif // MLIPKK_UTILS_H_

@@ -6,33 +6,10 @@
 #include <cstring>
 
 #include "mlipkk_utils.h"
+#include "mlipkk_irreps_type.h"
+#include "mlipkk_polynomial.h"
 
 namespace MLIP_NS {
-
-MLIPInput::~MLIPInput() {
-    delete [] pair_type;
-    delete [] des_type;
-}
-
-MLIPInput& MLIPInput::operator=(const MLIPInput& other) {
-    if (this != &other) {
-        n_type = other.n_type;
-        force = other.force;
-        params = other.params;
-        cutoff = other.cutoff;
-        model_type = other.model_type;
-        maxp = other.maxp;
-        maxl = other.maxl;
-
-        pair_type = new char [strlen(other.pair_type) + 1];
-        strcpy(pair_type, other.pair_type);
-
-        des_type = new char [strlen(other.des_type) + 1];
-        strcpy(des_type, other.des_type);
-    }
-
-    return *this;
-}
 
 void read_potential_file(const char* file, std::vector<std::string>& ele, vector1d& mass,
                          MLIPInput* fp, vector1d& reg_coeffs, Readgtinv& gtinvdata)
@@ -62,28 +39,49 @@ void read_potential_file(const char* file, std::vector<std::string>& ele, vector
     fp->n_type = int(ele.size());
     fp->force = true;
 
-    // line 2-4: cutoff radius, pair type, descriptor type
+    // line 2: cutoff radius
     fp->cutoff = get_value<double>(input);
+    // line 3: pair type
     auto pair_type = get_value<std::string>(input);
-    fp->pair_type = new char [pair_type.size() + 1];
-    strcpy(fp->pair_type, pair_type.c_str());
+    if (pair_type == "gaussian") {
+        fp->pair_type_id = PairTypeId::GAUSSIAN;
+    } else {
+        std::cerr << "Unknown pair_type: " << pair_type << std::endl;
+        exit(1);
+    }
+    // line 4: descriptor type
     auto des_type = get_value<std::string>(input);
-    fp->des_type = new char [des_type.size() + 1];
-    strcpy(fp->des_type, des_type.c_str());
+    if (des_type == "gtinv") {
+        fp->des_type_id = DesTypeId::GTINV;
+    } else if (des_type == "pair") {
+        fp->des_type_id = DesTypeId::PAIR;
+        std::cerr << "NotImplemented: des_type == pair" << std::endl;
+        exit(1);
+    } else {
+        std::cerr << "Unknown des_type: " << des_type << std::endl;
+        exit(1);
+    }
 
     // line 5-7: model_type, max power, max l
     fp->model_type = get_value<int>(input);
+    if (fp->model_type != 2) {
+        std::cerr << "NotImplemented: model_type == " << fp->model_type << std::endl;
+        exit(1);
+    }
+
     fp->maxp = get_value<int>(input);
     fp->maxl = get_value<int>(input);
 
     // line 8-10: gtinv_order, gtinv_maxl and gtinv_sym (optional)
-    char accepted_des_type[] = "gtinv";
-    // TODO: add des_type=="pair"
-    assert(strcmp(fp->des_type, accepted_des_type) == 0);
-    int gtinv_order = get_value<int>(input);
-    int size = gtinv_order - 1;
-    vector1i gtinv_maxl = get_value_array<int>(input, size);
-    std::vector<bool> gtinv_sym = get_value_array<bool>(input, size);
+    int gtinv_order = 2;
+    vector1i gtinv_maxl = {fp->maxl};
+    std::vector<bool> gtinv_sym = {false};
+    if (fp->des_type_id == DesTypeId::GTINV) {
+        gtinv_order = get_value<int>(input);
+        const int size = gtinv_order - 1;
+        gtinv_maxl = get_value_array<int>(input, size);
+        gtinv_sym = get_value_array<bool>(input, size);
+    }
 
     // line 11: number of regression coefficients
     // line 12,13: regression coefficients, scale coefficients
@@ -109,6 +107,15 @@ void read_potential_file(const char* file, std::vector<std::string>& ele, vector
 
     gtinvdata = Readgtinv(gtinv_order, gtinv_maxl, gtinv_sym);
 
+}
+
+int get_num_coeffs(const MLIPInput& input, const Readgtinv& gtinvdata) {
+    const int n_fn = static_cast<int>(input.params.size());
+    const auto& l_array = gtinvdata.get_l_comb();
+    const auto irreps_type_pairs = get_unique_irreps_type_pairs(input.n_type, l_array);
+    const MLIPPolynomial poly(input.model_type, input.maxp, n_fn, input.n_type, irreps_type_pairs);
+    int num_coeffs = static_cast<int>(poly.get_structural_features_prod_index().size());
+    return num_coeffs;
 }
 
 } // namespace MLIP_NS

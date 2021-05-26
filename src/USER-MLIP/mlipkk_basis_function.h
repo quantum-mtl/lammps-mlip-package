@@ -21,8 +21,8 @@
 
  ******************************************************************************/
 
-#ifndef __MLIPKK_BASIS_FUNCTION_H_
-#define __MLIPKK_BASIS_FUNCTION_H_
+#ifndef MLIPKK_BASIS_FUNCTION_H_
+#define MLIPKK_BASIS_FUNCTION_H_
 
 namespace MLIP_NS {
 
@@ -34,4 +34,4 @@ void gauss_d(const double& dis, const double& beta, const double& mu,
              double& bf, double& bf_d);
 
 } // namespace MLIP_NS
-#endif //__MLIPKK_BASIS_FUNCTION_H_
+#endif // MLIPKK_BASIS_FUNCTION_H_

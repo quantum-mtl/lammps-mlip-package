@@ -1,5 +1,5 @@
-#ifndef MLIP_FEATURES_KK
-#define MLIP_FEATURES_KK
+#ifndef MLIPKK_FEATURES_KK_H_
+#define MLIPKK_FEATURES_KK_H_
 
 #include "mlipkk_types_kokkos.h"
 #include "mlipkk_types.h"
@@ -49,4 +49,4 @@ void get_fn_kk(const NeighborPairIdx npidx, const double r, const double cutoff,
 }
 
 } // namespace MLIP_NS
-#endif
+#endif // MLIPKK_FEATURES_KK_H_

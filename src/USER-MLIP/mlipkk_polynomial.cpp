@@ -85,4 +85,10 @@ FeatureIdx MLIPPolynomial::get_feature_idx(const IrrepsTypeCombIdx& itcidx, cons
     return n * n_itc_ + itcidx;
 }
 
+void MLIPPolynomial::dump(std::ostream& os, const FeatureIdx fidx) const {
+    const IrrepsTypeCombIdx itcidx = get_irreps_type_idx(fidx);
+    const int n = get_fn_idx(fidx);
+    os << "fidx = " << fidx << ": itcidx = " << itcidx << ", n = " << n << std::endl;
+}
+
 } // namespace MLIP_NS

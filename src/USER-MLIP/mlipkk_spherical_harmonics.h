@@ -1,5 +1,5 @@
-#ifndef MLIP_SPHERICAL_HARMONICS
-#define MLIP_SPHERICAL_HARMONICS
+#ifndef MLIPKK_SPHERICAL_HARMONICS_H_
+#define MLIPKK_SPHERICAL_HARMONICS_H_
 
 #include "mlipkk_types.h"
 
@@ -42,4 +42,4 @@ private:
 };
 
 } // namespace MLIP_NS
-#endif
+#endif // MLIPKK_SPHERICAL_HARMONICS_H_

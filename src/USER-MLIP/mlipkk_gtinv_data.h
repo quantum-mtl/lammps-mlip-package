@@ -23,8 +23,8 @@
 
 ****************************************************************************/
 
-#ifndef __MLIPKK_GTINV_DATA_H_
-#define __MLIPKK_GTINV_DATA_H_
+#ifndef MLIPKK_GTINV_DATA_H_
+#define MLIPKK_GTINV_DATA_H_
 
 #include "mlipkk_types.h"
 
@@ -62,4 +62,4 @@ private:
 };
 
 } // namespace MLIP_NS
-#endif //__MLIPKK_GTINV_DATA_H_
+#endif // MLIPKK_GTINV_DATA_H_

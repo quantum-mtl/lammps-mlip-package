@@ -1,5 +1,5 @@
-#ifndef MLIP_TYPES_KOKKOS
-#define MLIP_TYPES_KOKKOS
+#ifndef MLIPKK_TYPES_KOKKOS_H_
+#define MLIPKK_TYPES_KOKKOS_H_
 
 #include <Kokkos_Core.hpp>
 #include <Kokkos_DualView.hpp>
@@ -22,9 +22,11 @@ using team_policy = Kokkos::TeamPolicy<ExecSpace>;
 
 using view_1d = Kokkos::View<double*, Layout, Device>;
 using view_2d = Kokkos::View<double**, Layout, Device>;
+using view_3d = Kokkos::View<double***, Layout, Device>;
 using view_4d = Kokkos::View<double****, Layout, Device>;
 using view_1dc = Kokkos::View<Kokkos::complex<double>*, Layout, Device>;
 using view_2dc = Kokkos::View<Kokkos::complex<double>**, Layout, Device>;
+using view_3dc = Kokkos::View<Kokkos::complex<double>***, Layout, Device>;
 using view_4dc = Kokkos::View<Kokkos::complex<double>****, Layout, Device>;
 
 using StaticCrsGraph = Kokkos::StaticCrsGraph<int, Layout, Device>;
@@ -32,6 +34,7 @@ using dview_1i = Kokkos::DualView<int*, Layout, Device>;
 using dview_2i = Kokkos::DualView<int**, Layout, Device>;
 using dview_1d = Kokkos::DualView<double*, Layout, Device>;
 using dview_2d = Kokkos::DualView<double**, Layout, Device>;
+using dview_3d = Kokkos::DualView<double***, Layout, Device>;
 using dview_4d = Kokkos::DualView<double****, Layout, Device>;
 using dview_2dc = Kokkos::DualView<Kokkos::complex<double>**, Layout, Device>;
 using dview_3dc = Kokkos::DualView<Kokkos::complex<double>***, Layout, Device>;
@@ -41,9 +44,10 @@ using dview_2b = Kokkos::DualView<bool**, Layout, Device>;
 
 using sview_1d = Kokkos::Experimental::ScatterView<double*, Layout, ExecSpace>;
 using sview_2d = Kokkos::Experimental::ScatterView<double**, Layout, ExecSpace>;
+using sview_3d = Kokkos::Experimental::ScatterView<double***, Layout, ExecSpace>;
 using sview_4d = Kokkos::Experimental::ScatterView<double****, Layout, ExecSpace>;
 using sview_4dc = Kokkos::Experimental::ScatterView<Kokkos::complex<double>****, Layout, ExecSpace>;
 
 }
 
-#endif
+#endif // MLIPKK_TYPES_KOKKOS_H_

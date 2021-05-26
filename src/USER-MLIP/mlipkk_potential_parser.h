@@ -1,5 +1,5 @@
-#ifndef MLIP_POTENTIAL_PARSER_H
-#define MLIP_POTENTIAL_PARSER_H
+#ifndef MLIPKK_POTENTIAL_PARSER_H_
+#define MLIPKK_POTENTIAL_PARSER_H_
 
 #include <string>
 #include <vector>
@@ -18,9 +18,9 @@ struct MLIPInput {
     /* cutoff radius for neighbor atoms */
     double cutoff;
     /* type of a radial basis function: e.g. "gaussian" */
-    char* pair_type;
+    PairTypeId pair_type_id;
     /* type of descriptors: "gtinv" or "pair"*/
-    char* des_type;
+    DesTypeId des_type_id;
     /* TODO */
     int model_type;
     /* maximum order of polynomial features */
@@ -28,13 +28,14 @@ struct MLIPInput {
     /* maximum angular number */
     int maxl;
 
-    ~MLIPInput();
-    MLIPInput& operator=(const MLIPInput& other);
+    ~MLIPInput() = default;
 };
 
 void read_potential_file(const char* file, std::vector<std::string>& ele, vector1d& mass,
                          MLIPInput* input, vector1d& reg_coeffs, Readgtinv& gtinvdata);
 
+int get_num_coeffs(const MLIPInput& input, const Readgtinv& gtinvdata);
+
 }  // namespace MLIP_NS
 
-#endif
+#endif // MLIPKK_POTENTIAL_PARSER_H_

@@ -1,5 +1,5 @@
-#ifndef MLIP_IRREPS_TYPE_H
-#define MLIP_IRREPS_TYPE_H
+#ifndef MLIPKK_IRREPS_TYPE_H_
+#define MLIPKK_IRREPS_TYPE_H_
 
 #include <iostream>
 #include <vector>
@@ -30,4 +30,4 @@ std::vector<IrrepsTypePair> get_unique_irreps_type_pairs(int n_types,
 
 } // namespace MLIP_NS
 
-#endif
+#endif // MLIPKK_IRREPS_TYPE_H_

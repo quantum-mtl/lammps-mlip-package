@@ -23,8 +23,8 @@
 
 ****************************************************************************/
 
-#ifndef __MLIP_GTINV_DATA_READER
-#define __MLIP_GTINV_DATA_READER
+#ifndef MLIPKK_GTINV_DATA_READER_H_
+#define MLIPKK_GTINV_DATA_READER_H_
 
 #include <vector>
 
@@ -52,7 +52,7 @@ class Readgtinv{
 
 public:
     Readgtinv() = default;
-    Readgtinv(const int& gtinv_order, const vector1i& gtinv_maxl,
+    Readgtinv(const int gtinv_order, const vector1i& gtinv_maxl,
               const std::vector<bool>& gtinv_sym);
    ~Readgtinv() = default;
 
@@ -88,4 +88,4 @@ private:
 };
 
 } // namespace MLIP_NS
-#endif
+#endif // MLIPKK_GTINV_DATA_READER_H_

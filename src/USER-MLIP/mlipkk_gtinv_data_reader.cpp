@@ -6,13 +6,13 @@
 
 namespace MLIP_NS {
 
-Readgtinv::Readgtinv(const int& gtinv_order, const vector1i& gtinv_maxl,
+Readgtinv::Readgtinv(const int gtinv_order, const vector1i& gtinv_maxl,
                      const std::vector<bool>& gtinv_sym)
 {
     screening(gtinv_order, gtinv_maxl, gtinv_sym);
 }
 
-/// @brief collect required info from GtinvData
+/// @brief collect required info from GtinvDataKK
 /// @param[in] gtinv_order maximum angular order to be used
 /// @param[in] gtinv_maxl vector of l_max for order = 2, 3, ...
 /// @param[in] gtinv_sym
@@ -27,7 +27,7 @@ void Readgtinv::screening(const int& gtinv_order, const vector1i& gtinv_maxl,
     IrrepsTermIdx iterm_count = 0;
     for (int i = 0; i < static_cast<int>(l_array_all.size()); ++i){
         const vector1i &lcomb = l_array_all[i];
-        bool is_required(true);  // flag whether to fetch from GtinvData
+        bool is_required(true);  // flag whether to fetch from GtinvDataKK
         const int order = static_cast<int>(lcomb.size());  // number of angular momemtums
         const int maxl = *(lcomb.end() - 1);
         if (order > 1){

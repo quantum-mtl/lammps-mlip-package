@@ -1,5 +1,5 @@
-#ifndef MLIP_H
-#define MLIP_H
+#ifndef MLIPKK_H_
+#define MLIPKK_H_
 
 #include <iostream>
 #include <vector>
@@ -129,6 +129,14 @@ class MLIPModel {
     /* stress tensor in voigt order, (6, ) */
     dview_1d stress_kk_ = dview_1d("stress_kk_", 6);
 
+    /* for force features */
+    dview_2d coords_kk_ = dview_2d("coords_kk_", 0, 0);
+    view_3d d_dirj_ = view_3d("d_dirj_", 0, 0, 0);
+    view_3d d_djri_ = view_3d("d_djri_", 0, 0, 0);
+    dview_2d polynomial_features_kk_ = dview_2d("polynomial_features_kk_", 0, 0);
+    dview_3d force_features_kk_ = dview_3d("force_features_kk_", 0, 0, 0);
+    dview_2d stress_features_kk_ = dview_2d("stress_features_kk_", 0, 0);
+
 public:
     MLIPModel() = default;
     ~MLIPModel() = default;
@@ -136,22 +144,38 @@ public:
     void initialize(const MLIPInput& input, const vector1d& reg_coeffs, const Readgtinv& gtinvdata);
 
     // getters
-    vector2d get_structural_features();
-    vector2d get_polynomial_features();
+    vector1d get_reg_coeffs() const;
+
+    // getters called after compute()
     double get_energy() const { return energy_; };
     vector1d get_site_energies();
     vector2d get_forces();
     vector1d get_stress();
 
+    // getters called after prepare_features()
+    /* return (inum_, n_des_) */
+    vector2d get_structural_features();
+    /* return (inum_, n_reg_coeffs_) */
+    vector2d get_polynomial_features();
+    /* return (inum_, n_reg_coeffs_, 6) */
+    vector3d get_force_features();
+    /* return (n_reg_coeffs_, 6) */
+    vector2d get_stress_features();
+
     // setter for structure
     void set_structure(const std::vector<ElementType>& types,
                        const vector3d& displacements, const std::vector<std::vector<SiteIdx>>& neighbors);
+    // defined here for LAMMPS interface
     template<class PairStyle, class NeighListKokkos>
     void set_structure_lmp(PairStyle *fpair, NeighListKokkos* k_list);
+
+    // defined here for LAMMPS interface
     template<class PairStyle>
     void get_forces_lmp(PairStyle *fpair);
+
     void compute();
     void prepare_features();
+    void update_reg_coeffs(const vector1d& reg_coeffs);
 
     // Do not call these functions outside!
     void compute_basis_functions();
@@ -163,13 +187,17 @@ public:
     void compute_forces_and_stress();
     void compute_polynomial_adjoints();
 
+    void compute_dirj();
+    void compute_polynomial_features();
+    void compute_force_and_stress_features();
+
     KOKKOS_INLINE_FUNCTION
     double product_real_part(const Kokkos::complex<double>& lhs, const Kokkos::complex<double>& rhs) const;
 
     void dump(std::ostream& os) const;
 
 private:
-    void initialize_radial_basis(const char* pair_type, const vector2d& params);
+    void initialize_radial_basis(const int pair_type_id, const vector2d& params);
     void initialize_gtinv(const int n_types, const int n_fn, const int model_type, const int maxp,
                           const Readgtinv& gtinvdata);
     void initialize_typecomb(const int n_types, const int n_typecomb);
@@ -180,4 +208,4 @@ private:
 
 } // namespace MLIP
 
-#endif
+#endif // MLIPKK_H_

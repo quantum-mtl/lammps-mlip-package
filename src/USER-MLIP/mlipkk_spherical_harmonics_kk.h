@@ -1,5 +1,5 @@
-#ifndef MLIP_SPHERICAL_HARMONICS_KK
-#define MLIP_SPHERICAL_HARMONICS_KK
+#ifndef MLIPKK_SPHERICAL_HARMONICS_KK_H_
+#define MLIPKK_SPHERICAL_HARMONICS_KK_H_
 
 #include "mlipkk_types.h"
 #include "mlipkk_types_kokkos.h"
@@ -20,7 +20,7 @@ Kokkos::complex<double> conj(Kokkos::complex<double> z) {
 /// For m >= 0, Y_{l}^{m} = P_{l}^{m} exp^{im phi} / sqrt(2)
 KOKKOS_INLINE_FUNCTION
 void compute_alp(const NeighborPairIdx npidx, const double costheta, int maxl,
-                 view_1d d_sph_coeffs_A, view_1d d_sph_coeffs_B,
+                 const view_1d d_sph_coeffs_A, const view_1d d_sph_coeffs_B,
                  view_2d d_alp)
 {
     const double sintheta = sqrt(1.0 - costheta * costheta);
@@ -77,7 +77,7 @@ void compute_ylm(const NeighborPairIdx npidx, const double azimuthal, const int 
 /// normalized associated Legendre polynomial divied by sintheta, P_{l}^{m}/sintheta
 KOKKOS_INLINE_FUNCTION
 void compute_alp_sintheta(const NeighborPairIdx npidx, const double costheta, int maxl,
-                          view_1d d_sph_coeffs_A, view_1d d_sph_coeffs_B,
+                          const view_1d d_sph_coeffs_A, const view_1d d_sph_coeffs_B,
                           view_2d d_alp_sintheta)
 {
     if (maxl == 0) {
@@ -151,4 +151,4 @@ void compute_ylm_der(const NeighborPairIdx npidx, const double costheta, const d
 
 } // namespace MLIP_NS
 
-#endif
+#endif // MLIPKK_SPHERICAL_HARMONICS_KK_H_

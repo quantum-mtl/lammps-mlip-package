@@ -21,13 +21,22 @@
 
 *****************************************************************************/
 
-#ifndef __MLIPKK_TYPES_H_
-#define __MLIPKK_TYPES_H_
+#ifndef MLIPKK_TYPES_H_
+#define MLIPKK_TYPES_H_
 
 #include <vector>
 #include <complex>
 
 namespace MLIP_NS {
+
+enum DesTypeId : int {
+    GTINV = 0,
+    PAIR = 1,
+};
+
+enum PairTypeId: int {
+    GAUSSIAN = 0,
+};
 
 using SiteIdx = int;
 // index for (i, j) neighbor pair
@@ -74,4 +83,4 @@ using vector4dc = std::vector<vector3dc>;
 using vector5dc = std::vector<vector4dc>;
 
 } // namespace MLIP_NS
-#endif //__MLIPKK_TYPES_H_
+#endif // MLIPKK_TYPES_H_
