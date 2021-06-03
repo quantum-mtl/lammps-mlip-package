@@ -226,9 +226,9 @@ void MLIPModel::set_structure_lmp(PairStyle *fpair, NeighListKokkos* k_list) {
     for (int jj = 0; jj < num_neighbors_i; ++jj) {
       SiteIdx j = h_neighbors(i, jj);
       j &= NEIGHMASK;
-      const int tagi = h_tag(i) - 1;
-      const int tagj = h_tag(j) - 1;
-      h_neighbor_pair_index(count_neighbor) = Kokkos::pair<SiteIdx, SiteIdx>(tagi, tagj);
+      const LAMMPS_NS::tagint tagi = h_tag(i) - 1;
+      const LAMMPS_NS::tagint tagj = h_tag(j) - 1;
+      h_neighbor_pair_index(count_neighbor) = Kokkos::pair<LAMMPS_NS::tagint, LAMMPS_NS::tagint>(tagi, tagj);
       h_neighbor_pair_displacements(count_neighbor, 0) = h_x(j, 0) - h_x(i, 0);
       h_neighbor_pair_displacements(count_neighbor, 1) = h_x(j, 1) - h_x(i, 1);
       h_neighbor_pair_displacements(count_neighbor, 2) = h_x(j, 2) - h_x(i, 2);
@@ -245,8 +245,8 @@ void MLIPModel::set_structure_lmp(PairStyle *fpair, NeighListKokkos* k_list) {
   auto h_neighbor_pair_typecomb = neighbor_pair_typecomb_kk_.view_host();
   for (NeighborPairIdx npidx = 0; npidx < n_pairs_; ++npidx) {
     const auto &ij = h_neighbor_pair_index(npidx);
-    const SiteIdx i = ij.first; // is tag[i] - 1
-    const SiteIdx j = ij.second; // is tag[j] - 1
+    const LAMMPS_NS::tagint i = ij.first; // is tag[i] - 1
+    const LAMMPS_NS::tagint j = ij.second; // is tag[j] - 1
     const ElementType type_i = types[i];
     const ElementType type_j = types[j];
     h_neighbor_pair_typecomb(npidx) = type_pairs_kk_.h_view(type_i, type_j);
@@ -259,7 +259,8 @@ void MLIPModel::set_structure_lmp(PairStyle *fpair, NeighListKokkos* k_list) {
   auto h_types = types_kk_.view_host();
   for (int ii = 0; ii < inum_; ++ii) {
     const SiteIdx i = h_ilist(ii);
-    types_kk_.h_view(i) = types[i];
+    const LAMMPS_NS::tagint tagi = h_tag(i) - 1;
+    h_types(tagi) = types[tagi];
   }
   types_kk_.modify_host();
   types_kk_.sync_device();
