@@ -20,7 +20,7 @@ class RegressionTest(unittest.TestCase):
     def test_regression(self):
         for input_, dump, log in zip(self.input_path, self.dump_path, self.log_path):
             with self.subTest(input_=input_, dump=dump, log=log):
-                subprocess.run([self.lammps_path, '-in', input_])
+                subprocess.run([self.lammps_path, '-in', input_, '-k','on','g','1','-sf','kk','-pk','kokkos','newton','on','neigh','half'])
 
                 # Compare final coordinates of atoms
                 with open('dump.atom', 'r') as f:
