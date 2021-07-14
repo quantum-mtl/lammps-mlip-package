@@ -30,27 +30,41 @@ class PairMLIPGtinvKokkos : public PairMLIPGtinv {
   typedef ArrayTypes<DeviceType> AT;
   typedef EV_FLOAT value_type;
 
-  PairMLIPGtinvKokkos(class LAMMPS *);
-  virtual ~PairMLIPGtinvKokkos();
+  explicit PairMLIPGtinvKokkos(class LAMMPS *);
+  ~PairMLIPGtinvKokkos() override;
 
-  void coeff(int, char **);
-  void init_style();
-  void compute(int, int);
-  double init_one(int, int);
-  void allocate();
+  void settings(int narg, char **arg) override;
+  void coeff(int, char **) override;
+  void init_style() override;
+  void compute(int, int) override;
+  double init_one(int, int) override;
+  void allocate() override;
 
  protected:
   typename AT::t_x_array_randomread x;
   typename AT::t_f_array f;
 
+  // From pair_eam_alloy_kokkos.h
+  // Declare dups for HALFTHREAD
+  // need_dup is HALFTHREAD(4u) when threads are gt 2 or gpus are gt 1.
+  // https://github.com/lammps/lammps/blob/998b76520e74b3a90580bf1a92155dcbe2843dba/src/KOKKOS/pair_eam_alloy_kokkos.h#L130-L138
+  int need_dup;
+  Kokkos::Experimental::ScatterView<F_FLOAT*[3], typename DAT::t_f_array::array_layout,typename KKDevice<DeviceType>::value,typename Kokkos::Experimental::ScatterSum,Kokkos::Experimental::ScatterDuplicated> dup_f;
+  Kokkos::Experimental::ScatterView<E_FLOAT*, typename DAT::t_efloat_1d::array_layout,typename KKDevice<DeviceType>::value,typename Kokkos::Experimental::ScatterSum,Kokkos::Experimental::ScatterDuplicated> dup_eatom;
+  Kokkos::Experimental::ScatterView<F_FLOAT*[6], typename DAT::t_virial_array::array_layout,typename KKDevice<DeviceType>::value,typename Kokkos::Experimental::ScatterSum,Kokkos::Experimental::ScatterDuplicated> dup_vatom;
+  Kokkos::Experimental::ScatterView<F_FLOAT*[3], typename DAT::t_f_array::array_layout,typename KKDevice<DeviceType>::value,typename Kokkos::Experimental::ScatterSum,Kokkos::Experimental::ScatterNonDuplicated> ndup_f;
+  Kokkos::Experimental::ScatterView<E_FLOAT*, typename DAT::t_efloat_1d::array_layout,typename KKDevice<DeviceType>::value,typename Kokkos::Experimental::ScatterSum,Kokkos::Experimental::ScatterNonDuplicated> ndup_eatom;
+  Kokkos::Experimental::ScatterView<F_FLOAT*[6], typename DAT::t_virial_array::array_layout,typename KKDevice<DeviceType>::value,typename Kokkos::Experimental::ScatterSum,Kokkos::Experimental::ScatterNonDuplicated> ndup_vatom;
+
+
   typename AT::t_neighbors_2d d_neighbors;
   typename AT::t_int_1d_randomread d_ilist;
   typename AT::t_int_1d_randomread d_numneigh;
 
-//  DAT::tdual_efloat_1d k_eatom;
-//  DAT::tdual_virial_array k_vatom;
-//  typename AT::t_efloat_1d d_eatom;
-//  typename AT::t_virial_array d_vatom;
+  DAT::tdual_efloat_1d k_eatom;
+  DAT::tdual_virial_array k_vatom;
+  typename AT::t_efloat_1d d_eatom;
+  typename AT::t_virial_array d_vatom;
 
   int inum;
 
@@ -58,20 +72,21 @@ class PairMLIPGtinvKokkos : public PairMLIPGtinv {
 
   int neighflag;
 
-  Kokkos::View<T_INT *, DeviceType> d_map;                    // mapping from atom types to elements
+//  Kokkos::View<T_INT *, DeviceType> d_map;                    // mapping from atom types to elements
 
   typedef Kokkos::DualView<F_FLOAT **, DeviceType> tdual_fparams;
   tdual_fparams k_cutsq;
-  typedef Kokkos::View<const F_FLOAT **, DeviceType, Kokkos::MemoryTraits<Kokkos::RandomAccess>> t_fparams_rnd;
-  t_fparams_rnd rnd_cutsq;
+//  typedef Kokkos::View<const F_FLOAT **, DeviceType, Kokkos::MemoryTraits<Kokkos::RandomAccess>> t_fparams_rnd;
+//  t_fparams_rnd rnd_cutsq;
 
   // ---- for mlipkk ----
   std::vector<std::string> ele;
+  std::vector<int> map;
   typename MLIP_NS::vector1d mass;
   typename MLIP_NS::vector1d reg_coeffs;
-  MLIP_NS::MLIPInput fp;
+  typename MLIP_NS::MLIPInput *fp;
   typename MLIP_NS::Readgtinv gtinvdata;
-  typename MLIP_NS::MLIPModel model;
+  typename MLIP_NS::MLIPModel *model;
   template<class PairStyle, class NeighListKokkos>
   friend void MLIP_NS::MLIPModel::set_structure_lmp(PairStyle *fpair, NeighListKokkos *k_list);
   friend void pair_virial_fdotr_compute<PairMLIPGtinvKokkos>(PairMLIPGtinvKokkos *);
