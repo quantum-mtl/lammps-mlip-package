@@ -36,7 +36,8 @@ void MLIPModel::initialize(const MLIPInput& input, const vector1d& reg_coeffs, c
 
     // regression coefficients
     n_reg_coeffs_ = static_cast<int>(reg_coeffs.size());
-    Kokkos::resize(reg_coeffs_kk_, n_reg_coeffs_);
+    Kokkos::resize(reg_coeffs_kk_, n_reg_coeffs_);  // resize on device
+    reg_coeffs_kk_.sync_host();  // sync from device to host and reset modified_flag to 0
     auto h_reg_coeffs = reg_coeffs_kk_.view_host();
     for (int i = 0; i < n_reg_coeffs_; ++i) {
         h_reg_coeffs(i) = reg_coeffs[i];
@@ -54,6 +55,7 @@ void MLIPModel::initialize(const MLIPInput& input, const vector1d& reg_coeffs, c
 void MLIPModel::initialize_radial_basis(const int pair_type_id, const vector2d& params) {
     n_fn_ = static_cast<int>(params.size());
     Kokkos::resize(radial_params_kk_, n_fn_, 2);
+    radial_params_kk_.sync_host();
     auto h_params = radial_params_kk_.view_host();
     for (int n = 0; n < n_fn_; ++n) {
         h_params(n, 0) = params[n][0];
@@ -75,6 +77,7 @@ void MLIPModel::initialize_gtinv(const int n_types, const int n_fn, const int mo
     const auto& flatten_lm_coeffs = gtinvdata.get_flatten_lm_coeffs();
     const int n_irrepsterm = static_cast<int>(flatten_lm_coeffs.size());
     Kokkos::resize(lm_coeffs_kk_, n_irrepsterm);
+    lm_coeffs_kk_.sync_host();
     auto h_lm_coeffs = lm_coeffs_kk_.view_host();
     for (IrrepsTermIdx iterm = 0; iterm < n_irrepsterm; ++iterm) {
         h_lm_coeffs(iterm) = flatten_lm_coeffs[iterm];
@@ -98,6 +101,7 @@ void MLIPModel::initialize_gtinv(const int n_types, const int n_fn, const int mo
     d_irreps_type_combs_ = Kokkos::create_staticcrsgraph<StaticCrsGraph>("d_irreps_type_combs_", irreps_type_combs);
 
     Kokkos::resize(irreps_type_intersection_, n_irreps_typecomb_, n_types_);
+    irreps_type_intersection_.sync_host();
     auto h_irreps_type_intersection = irreps_type_intersection_.view_host();
     for (IrrepsTypeCombIdx itcidx = 0; itcidx < n_irreps_typecomb_; ++itcidx) {
         const IrrepsTypePair& itp = irreps_type_pairs[itcidx];
@@ -109,6 +113,7 @@ void MLIPModel::initialize_gtinv(const int n_types, const int n_fn, const int mo
     irreps_type_intersection_.sync_device();
 
     Kokkos::resize(irreps_type_mapping_, n_irreps_typecomb_);
+    irreps_type_mapping_.sync_host();
     auto h_irreps_type_mapping = irreps_type_mapping_.view_host();
     for (IrrepsTypeCombIdx itcidx = 0; itcidx < n_irreps_typecomb_; ++itcidx) {
         const IrrepsTypePair& itp = irreps_type_pairs[itcidx];
@@ -120,6 +125,7 @@ void MLIPModel::initialize_gtinv(const int n_types, const int n_fn, const int mo
     const auto& irreps_first_term = gtinvdata.get_irreps_first_term();
     const int num_irreps = static_cast<int>(l_array.size());
     Kokkos::resize(irreps_first_term_, num_irreps);
+    irreps_first_term_.sync_host();
     auto h_irreps_first_term = irreps_first_term_.view_host();
     for (IrrepsIdx iidx = 0; iidx < num_irreps; ++iidx) {
         h_irreps_first_term(iidx) = irreps_first_term[iidx];
@@ -129,6 +135,7 @@ void MLIPModel::initialize_gtinv(const int n_types, const int n_fn, const int mo
 
     const auto& irreps_num_terms = gtinvdata.get_irreps_num_terms();
     Kokkos::resize(irreps_num_terms_, num_irreps);
+    irreps_num_terms_.sync_host();
     auto h_irreps_num_terms = irreps_num_terms_.view_host();
     for (IrrepsIdx iidx = 0; iidx < num_irreps; ++iidx) {
         h_irreps_num_terms(iidx) = irreps_num_terms[iidx];
@@ -147,6 +154,7 @@ void MLIPModel::initialize_gtinv(const int n_types, const int n_fn, const int mo
 void MLIPModel::initialize_typecomb(const int n_types, const int n_typecomb) {
     // the other type of a type combination
     Kokkos::resize(other_type_kk_, n_typecomb, n_types);
+    other_type_kk_.sync_host();
     auto h_other_type = other_type_kk_.view_host();
     // if other type does not exist, return -1
     for (TypeCombIdx tcidx = 0; tcidx < n_typecomb; ++tcidx) {
@@ -165,6 +173,7 @@ void MLIPModel::initialize_typecomb(const int n_types, const int n_typecomb) {
 
     // type combinations
     Kokkos::resize(type_pairs_kk_, n_types, n_types);
+    type_pairs_kk_.sync_host();
     auto h_type_pairs = type_pairs_kk_.view_host();
     int count = 0;
     for (ElementType type1 = 0; type1 < n_types; ++type1) {
@@ -188,6 +197,7 @@ void MLIPModel::initialize_sph(const int maxl) {
 
     // spherical harmonics
     Kokkos::resize(lm_info_kk_, n_lm_half_, 4);
+    lm_info_kk_.sync_host();
     auto h_lm_info = lm_info_kk_.view_host();
     for (int l = 0; l <= maxl_; ++l){
         for (int m = -l; m <= 0; ++m){
@@ -206,7 +216,9 @@ void MLIPModel::initialize_sph(const int maxl) {
 
     // utility for converting LMIdx to l and m
     Kokkos::resize(lm2l_, n_lm_all_);
+    lm2l_.sync_host();
     Kokkos::resize(lm2m_, n_lm_all_);
+    lm2m_.sync_host();
     auto h_lm2l = lm2l_.view_host();
     auto h_lm2m = lm2m_.view_host();
     for (int l = 0; l <= maxl_; ++l) {
@@ -229,7 +241,9 @@ void MLIPModel::initialize_sph(const int maxl) {
 
 void MLIPModel::initialize_sph_AB(const int maxl) {
     Kokkos::resize(sph_coeffs_A_, n_lm_half_);
+    sph_coeffs_A_.sync_host();
     Kokkos::resize(sph_coeffs_B_, n_lm_half_);
+    sph_coeffs_B_.sync_host();
 
     auto h_sph_coeffs_A = sph_coeffs_A_.view_host();
     auto h_sph_coeffs_B = sph_coeffs_B_.view_host();
@@ -272,7 +286,9 @@ void MLIPModel::set_structure(const std::vector<ElementType>& types,
     // flatten half-neighbor list
     // neighbor_pair_index and neighbor_pair_displacements
     Kokkos::resize(neighbor_pair_index_kk_, n_pairs_);
+    neighbor_pair_index_kk_.sync_host();
     Kokkos::resize(neighbor_pair_displacements_kk_, n_pairs_, 3);
+    neighbor_pair_displacements_kk_.sync_host();
     auto h_neighbor_pair_index = neighbor_pair_index_kk_.view_host();
     auto h_neighbor_pair_displacements = neighbor_pair_displacements_kk_.view_host();
 
@@ -295,6 +311,7 @@ void MLIPModel::set_structure(const std::vector<ElementType>& types,
 
     // neighbor_pair_typecomb
     Kokkos::resize(neighbor_pair_typecomb_kk_, n_pairs_);
+    neighbor_pair_typecomb_kk_.sync_host();
     auto h_neighbor_pair_typecomb = neighbor_pair_typecomb_kk_.view_host();
     for (NeighborPairIdx npidx = 0; npidx < n_pairs_; ++npidx) {
         const auto& ij = h_neighbor_pair_index(npidx);
@@ -309,6 +326,7 @@ void MLIPModel::set_structure(const std::vector<ElementType>& types,
 
     // types
     Kokkos::resize(types_kk_, inum_);
+    types_kk_.sync_host();
     auto h_types = types_kk_.view_host();
     for (SiteIdx i = 0; i < inum_; ++i) {
         h_types(i) = types[i];
@@ -332,11 +350,14 @@ void MLIPModel::set_structure(const std::vector<ElementType>& types,
     Kokkos::resize(d_anlm_i_, inum_, n_types_, n_fn_, n_lm_half_);
     Kokkos::resize(d_anlm_, inum_, n_types_, n_fn_, n_lm_all_);
     Kokkos::resize(structural_features_kk_, inum_, n_des_);
+    structural_features_kk_.sync_host();
     Kokkos::resize(d_polynomial_adjoints_, inum_, n_des_);
     Kokkos::resize(d_basis_function_adjoints_, inum_, n_typecomb_, n_fn_, n_lm_half_);
 
     Kokkos::resize(site_energy_kk_, inum_);
+    site_energy_kk_.sync_host();
     Kokkos::resize(forces_kk_, inum_, 3);
+    forces_kk_.sync_host();
 
     Kokkos::fence();
 }
