@@ -19,6 +19,7 @@ class MLIPModelLMP : public MLIPModel {
   void initialize(const MLIPInput& input, const vector1d& reg_coeffs, const Readgtinv& gtinvdata);
   void compute();
   void compute_order_parameters();
+  void compute_structural_features();
 
   // defined here for LAMMPS interface
   template<class PairStyle, class NeighListKokkos>

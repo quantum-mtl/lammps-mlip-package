@@ -144,4 +144,57 @@ void MLIPModelLMP::compute_order_parameters() {
   Kokkos::fence();
 }
 
+void MLIPModel::compute_structural_features() {
+  const auto d_types = types_kk_.view_device();
+  const auto d_other_type = other_type_kk_.view_device();
+  const auto d_irreps_type_intersection = irreps_type_intersection_.view_device();
+  const auto d_irreps_type_mapping = irreps_type_mapping_.view_device();
+  const auto d_irreps_first_term = irreps_first_term_.view_device();
+  const auto d_irreps_num_terms = irreps_num_terms_.view_device();
+  const auto d_lm_coeffs = lm_coeffs_kk_.view_device();
+  auto d_structural_features = structural_features_kk_.view_device();
+
+  Kokkos::parallel_for("init_structural_features",
+                       Kokkos::MDRangePolicy<ExecSpace, Kokkos::Rank<2>>({0, 0}, {inum_, n_des_}),
+                       KOKKOS_CLASS_LAMBDA(const SiteIdx i, const FeatureIdx fidx) {
+                         d_structural_features(i, fidx) = 0.0;
+                       }
+  );
+
+  Kokkos::parallel_for("structural_features",
+                       Kokkos::MDRangePolicy<ExecSpace, Kokkos::Rank<2>>({0, 0}, {inum_, n_des_}),
+                       KOKKOS_CLASS_LAMBDA(const SiteIdx i, const FeatureIdx fidx) {
+                         const IrrepsTypeCombIdx itcidx = fidx % n_irreps_typecomb_;  // should be consistent with poly_.get_irreps_type_idx
+
+                         const ElementType type_i = d_types(i);
+                         if (!d_irreps_type_intersection(itcidx, type_i)) {
+                           // not related element type
+                           return;
+                         }
+
+                         auto type_combs_rowview = d_irreps_type_combs_.rowConst(itcidx);
+                         const int n = fidx / n_irreps_typecomb_;
+                         const IrrepsIdx iidx = d_irreps_type_mapping(itcidx);
+                         const IrrepsTermIdx first_term = d_irreps_first_term(iidx);
+                         const int num_terms = d_irreps_num_terms(iidx);
+
+                         double feature = 0.0;
+                         for (int term = 0; term < num_terms; ++term) {
+                           const IrrepsTermIdx iterm = first_term + term;
+                           auto lm_term = d_lm_array_.rowConst(iterm);
+                           Kokkos::complex<double> tmp = d_lm_coeffs(iterm);
+                           for (int p = 0; p < type_combs_rowview.length; ++p) {
+                             const TypeCombIdx tcidx = type_combs_rowview(p);
+                             const ElementType type2 = d_other_type(tcidx, type_i);
+                             const LMIdx lm = lm_term(p);
+                             tmp *= d_anlm_(i, type2, n, lm);
+                           }
+                           feature += tmp.real();
+                         }
+                         d_structural_features(i, fidx) = feature;
+                       }
+  );
+  structural_features_kk_.modify_device();
+  Kokkos::fence();
+}
 } // namespace MLIP_NS
