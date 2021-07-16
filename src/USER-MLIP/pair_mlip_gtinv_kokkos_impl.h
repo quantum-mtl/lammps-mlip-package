@@ -442,10 +442,14 @@ void MLIPModelLMP::set_structure(PairStyle *fpair, NeighListKokkos* k_list) {
   Kokkos::realloc(types_kk_, nall_);
 //  types_kk_.sync_host();
   auto h_types = types_kk_.view_host();
-  for (int ii = 0; ii < inum_; ++ii) {
-    const LocalIdx i = h_ilist(ii);
-    const SiteIdx site_i = h_tag(i) - 1;
+  for (NeighborPairIdx npidx = 0; npidx < n_pairs_; ++npidx) {
+    const auto &ij = h_neighbor_pair_index(npidx);
+    const LocalIdx i = ij.first;
+    const LocalIdx j = ij.second;
+    const SiteIdx site_i = h_tag(i)-1;
+    const SiteIdx site_j = h_tag(j)-1;
     h_types(i) = types[site_i];
+    h_types(j) = types[site_j];
   }
   types_kk_.modify_host();
   types_kk_.sync_device();

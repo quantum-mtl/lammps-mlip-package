@@ -40,7 +40,7 @@ void MLIPModelLMP::compute() {
     end = std::chrono::system_clock::now();
 #endif
 
-  compute_structural_features();
+  MLIPModelLMP::compute_structural_features();
 
 #ifdef _DEBUG
   time_sf += std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::system_clock::now() - end).count();
@@ -144,7 +144,7 @@ void MLIPModelLMP::compute_order_parameters() {
   Kokkos::fence();
 }
 
-void MLIPModel::compute_structural_features() {
+void MLIPModelLMP::compute_structural_features() {
   const auto d_types = types_kk_.view_device();
   const auto d_other_type = other_type_kk_.view_device();
   const auto d_irreps_type_intersection = irreps_type_intersection_.view_device();
@@ -155,14 +155,14 @@ void MLIPModel::compute_structural_features() {
   auto d_structural_features = structural_features_kk_.view_device();
 
   Kokkos::parallel_for("init_structural_features",
-                       Kokkos::MDRangePolicy<ExecSpace, Kokkos::Rank<2>>({0, 0}, {inum_, n_des_}),
+                       Kokkos::MDRangePolicy<ExecSpace, Kokkos::Rank<2>>({0, 0}, {nall_, n_des_}),
                        KOKKOS_CLASS_LAMBDA(const SiteIdx i, const FeatureIdx fidx) {
                          d_structural_features(i, fidx) = 0.0;
                        }
   );
 
   Kokkos::parallel_for("structural_features",
-                       Kokkos::MDRangePolicy<ExecSpace, Kokkos::Rank<2>>({0, 0}, {inum_, n_des_}),
+                       Kokkos::MDRangePolicy<ExecSpace, Kokkos::Rank<2>>({0, 0}, {nall_, n_des_}),
                        KOKKOS_CLASS_LAMBDA(const SiteIdx i, const FeatureIdx fidx) {
                          const IrrepsTypeCombIdx itcidx = fidx % n_irreps_typecomb_;  // should be consistent with poly_.get_irreps_type_idx
 
