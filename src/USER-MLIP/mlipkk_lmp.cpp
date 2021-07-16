@@ -84,7 +84,7 @@ void MLIPModelLMP::compute() {
 
 void MLIPModelLMP::compute_order_parameters() {
   Kokkos::parallel_for("init_anlm_half",
-                       Kokkos::MDRangePolicy<ExecSpace, Kokkos::Rank<4>>({0, 0, 0, 0}, {inum_, n_types_, n_fn_, n_lm_half_}),
+                       Kokkos::MDRangePolicy<ExecSpace, Kokkos::Rank<4>>({0, 0, 0, 0}, {nall_, n_types_, n_fn_, n_lm_half_}),
                        KOKKOS_CLASS_LAMBDA(const SiteIdx i, const ElementType type, const int n, const LMInfoIdx lmi) {
                          d_anlm_r_(i, type, n, lmi) = 0.0;
                          d_anlm_i_(i, type, n, lmi) = 0.0;
@@ -128,7 +128,7 @@ void MLIPModelLMP::compute_order_parameters() {
 
   // augment order paramters for m > 0
   Kokkos::parallel_for("anlm_all",
-                       Kokkos::MDRangePolicy<Kokkos::Rank<4>>({0, 0, 0, 0}, {inum_, n_types_, n_fn_, n_lm_half_}),
+                       Kokkos::MDRangePolicy<Kokkos::Rank<4>>({0, 0, 0, 0}, {nall_, n_types_, n_fn_, n_lm_half_}),
                        KOKKOS_CLASS_LAMBDA(const SiteIdx i, const ElementType type, const int n, const LMInfoIdx lmi) {
                          const int m = d_lm_info(lmi, 1);
                          const LMIdx lm1 = d_lm_info(lmi, 2);  // idx for (l, m)
