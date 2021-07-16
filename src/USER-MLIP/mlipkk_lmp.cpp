@@ -197,4 +197,53 @@ void MLIPModelLMP::compute_structural_features() {
   structural_features_kk_.modify_device();
   Kokkos::fence();
 }
+
+void MLIPModelLMP::compute_energy() {
+  const int num_poly_idx = n_reg_coeffs_;
+  auto d_site_energy = site_energy_kk_.view_device();
+
+  // initialize
+  Kokkos::parallel_for("init_energy",
+                       range_policy(0, inum_),
+                       KOKKOS_LAMBDA(const SiteIdx i) {
+                         d_site_energy(i) = 0.0;
+                       }
+  );
+
+  const auto d_reg_coeffs = reg_coeffs_kk_.view_device();
+  const auto d_structural_features = structural_features_kk_.view_device();
+
+  // energy for each atom-i
+  sview_1d sd_site_energy(d_site_energy);
+  Kokkos::parallel_for("site_energy",
+                       Kokkos::MDRangePolicy<ExecSpace, Kokkos::Rank<2>>({0, 0}, {inum_, num_poly_idx}),
+                       KOKKOS_CLASS_LAMBDA(const SiteIdx i, const PolynomialIdx pidx) {
+                         double feature = 1.0;
+                         auto rowView = d_polynomial_index_.rowConst(pidx);
+                         for (int ffidx = 0; ffidx < rowView.length; ++ffidx) {
+                           const FeatureIdx fidx = rowView(ffidx);
+                           feature *= d_structural_features(i, fidx);
+                         }
+                         auto sd_site_energy_a = sd_site_energy.access();
+                         sd_site_energy_a(i) += d_reg_coeffs(pidx) * feature;
+                       }
+  );
+  Kokkos::Experimental::contribute(d_site_energy, sd_site_energy);
+  site_energy_kk_.modify_device();
+
+  // total energy
+  double energy = 0.0;
+  Kokkos::parallel_reduce("energy",
+                          range_policy(0, inum_),
+                          KOKKOS_CLASS_LAMBDA(const SiteIdx i, double& energy_tmp) {
+                            energy_tmp += site_energy_kk_.d_view(i);
+                          },
+                          energy
+  );
+  Kokkos::fence();
+  energy_ = energy;
+
+  Kokkos::fence();
+}
+
 } // namespace MLIP_NS

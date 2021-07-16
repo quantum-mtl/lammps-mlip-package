@@ -20,6 +20,7 @@ class MLIPModelLMP : public MLIPModel {
   void compute();
   void compute_order_parameters();
   void compute_structural_features();
+  void compute_energy();
 
   // defined here for LAMMPS interface
   template<class PairStyle, class NeighListKokkos>
