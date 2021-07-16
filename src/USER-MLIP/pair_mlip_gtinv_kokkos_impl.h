@@ -115,7 +115,7 @@ void PairMLIPGtinvKokkos<DeviceType>::coeff(int narg, char **arg) {
       delete model;
       model = nullptr;
     }
-    model = new MLIP_NS::MLIPModel();
+    model = new MLIP_NS::MLIPModelLMP();
     model->initialize(*fp, reg_coeffs, gtinvdata);
   }
 
@@ -300,9 +300,9 @@ void PairMLIPGtinvKokkos<DeviceType>::compute(int eflag_in, int vflag_in) {
 
   atomKK->sync(Host, datamask_read);
 
-  model->set_structure_lmp<PairMLIPGtinvKokkos<DeviceType>, NeighListKokkos<DeviceType>>(this, k_list);
+  model->set_structure<PairMLIPGtinvKokkos<DeviceType>, NeighListKokkos<DeviceType>>(this, k_list);
   model->compute();
-  model->get_forces_lmp<PairMLIPGtinvKokkos<DeviceType>>(this);
+  model->get_forces<PairMLIPGtinvKokkos<DeviceType>>(this);
 
   // From pair_eam_alloy_kokkos.cpp
   // https://github.com/lammps/lammps/blob/998b76520e74b3a90580bf1a92155dcbe2843dba/src/KOKKOS/pair_eam_alloy_kokkos.cpp#L251-L252
@@ -354,16 +354,16 @@ void PairMLIPGtinvKokkos<DeviceType>::compute(int eflag_in, int vflag_in) {
   }
 }
 
-
 } // namespace LAMMPS
 
 namespace MLIP_NS{
 template<class PairStyle, class NeighListKokkos>
-void MLIPModel::set_structure_lmp(PairStyle *fpair, NeighListKokkos* k_list) {
+void MLIPModelLMP::set_structure(PairStyle *fpair, NeighListKokkos* k_list) {
   auto d_numneigh = k_list->d_numneigh;
   auto d_neighbors = k_list->d_neighbors;
   auto d_ilist = k_list->d_ilist;
-  inum_ = k_list->inum;
+  inum_ = k_list->inum;  // Number of I atoms neighbors are stored for
+  nall_ = fpair->atomKK->nlocal + fpair->atomKK->nghost;  // Total number of owned and ghost atoms on this proc
   auto h_x = fpair->atomKK->k_x.view_host();
 //  LAMMPS_NS::tagint *tag = fpair->atom->tag;
   auto h_tag = fpair->atomKK->k_tag.view_host();
@@ -378,7 +378,6 @@ void MLIPModel::set_structure_lmp(PairStyle *fpair, NeighListKokkos* k_list) {
   Kokkos::deep_copy(h_numneigh, d_numneigh);
   Kokkos::deep_copy(h_neighbors, d_neighbors);
   Kokkos::deep_copy(h_ilist, d_ilist);
-  using LocalIdx = int;
 
   // number of (i, j) neighbors
   // TODO: atom-first indexing for GPU
@@ -403,7 +402,6 @@ void MLIPModel::set_structure_lmp(PairStyle *fpair, NeighListKokkos* k_list) {
   NeighborPairIdx count_neighbor = 0;
   for (int ii = 0; ii < inum_; ++ii) {
     const LocalIdx i = h_ilist(ii);
-    const SiteIdx site_i = h_tag(i) - 1;
 //    const LAMMPS_NS::AtomNeighborsConst neighbors_i = k_list->get_neighbors_const(i);
     const int num_neighbors_i = h_numneigh(i);
     const X_FLOAT xtmp = h_x(i,0);
@@ -413,8 +411,7 @@ void MLIPModel::set_structure_lmp(PairStyle *fpair, NeighListKokkos* k_list) {
       SiteIdx j = h_neighbors(i,jj);
 //      SiteIdx j = neighbors_i(jj);
       j &= NEIGHMASK;
-      const SiteIdx site_j = h_tag(j) - 1;
-      h_neighbor_pair_index(count_neighbor) = Kokkos::pair<SiteIdx, SiteIdx>(site_i, site_j);
+      h_neighbor_pair_index(count_neighbor) = Kokkos::pair<LocalIdx , LocalIdx>(i, j);
       h_neighbor_pair_displacements(count_neighbor, 0) = h_x(j, 0) - xtmp;
       h_neighbor_pair_displacements(count_neighbor, 1) = h_x(j, 1) - ytmp;
       h_neighbor_pair_displacements(count_neighbor, 2) = h_x(j, 2) - ztmp;
@@ -432,8 +429,8 @@ void MLIPModel::set_structure_lmp(PairStyle *fpair, NeighListKokkos* k_list) {
   auto h_neighbor_pair_typecomb = neighbor_pair_typecomb_kk_.view_host();
   for (NeighborPairIdx npidx = 0; npidx < n_pairs_; ++npidx) {
     const auto &ij = h_neighbor_pair_index(npidx);
-    const SiteIdx i = ij.first; // is tag[i] - 1
-    const SiteIdx j = ij.second; // is tag[j] - 1
+    const SiteIdx i = h_tag(ij.first)-1; // is tag[i] - 1
+    const SiteIdx j = h_tag(ij.second)-1; // is tag[j] - 1
     const ElementType type_i = types[i];
     const ElementType type_j = types[j];
     h_neighbor_pair_typecomb(npidx) = type_pairs_kk_.h_view(type_i, type_j);
@@ -442,13 +439,13 @@ void MLIPModel::set_structure_lmp(PairStyle *fpair, NeighListKokkos* k_list) {
   neighbor_pair_typecomb_kk_.sync_device();
 
   // types
-  Kokkos::realloc(types_kk_, inum_);
+  Kokkos::realloc(types_kk_, nall_);
 //  types_kk_.sync_host();
   auto h_types = types_kk_.view_host();
   for (int ii = 0; ii < inum_; ++ii) {
     const LocalIdx i = h_ilist(ii);
     const SiteIdx site_i = h_tag(i) - 1;
-    h_types(site_i) = types[site_i];
+    h_types(i) = types[site_i];
   }
   types_kk_.modify_host();
   types_kk_.sync_device();
@@ -465,43 +462,44 @@ void MLIPModel::set_structure_lmp(PairStyle *fpair, NeighListKokkos* k_list) {
   Kokkos::realloc(d_ylm_dy_, n_pairs_, n_lm_half_);
   Kokkos::realloc(d_ylm_dz_, n_pairs_, n_lm_half_);
 
-  Kokkos::realloc(d_anlm_r_, inum_, n_types_, n_fn_, n_lm_half_);
-  Kokkos::realloc(d_anlm_i_, inum_, n_types_, n_fn_, n_lm_half_);
-  Kokkos::realloc(d_anlm_, inum_, n_types_, n_fn_, n_lm_all_);
-  Kokkos::realloc(structural_features_kk_, inum_, n_des_);
+  Kokkos::realloc(d_anlm_r_, nall_, n_types_, n_fn_, n_lm_half_);
+  Kokkos::realloc(d_anlm_i_, nall_, n_types_, n_fn_, n_lm_half_);
+  Kokkos::realloc(d_anlm_, nall_, n_types_, n_fn_, n_lm_all_);
+  Kokkos::realloc(structural_features_kk_, nall_, n_des_);
 //  structural_features_kk_.sync_host();
-  Kokkos::realloc(d_polynomial_adjoints_, inum_, n_des_);
-  Kokkos::realloc(d_basis_function_adjoints_, inum_, n_typecomb_, n_fn_, n_lm_half_);
+  Kokkos::realloc(d_polynomial_adjoints_, nall_, n_des_);
+  Kokkos::realloc(d_basis_function_adjoints_, nall_, n_typecomb_, n_fn_, n_lm_half_);
 
-  Kokkos::realloc(site_energy_kk_, inum_);
+  Kokkos::realloc(site_energy_kk_, nall_);
 //  site_energy_kk_.sync_host();
-  Kokkos::realloc(forces_kk_, inum_, 3);
-  forces_kk_.sync_host();
+  Kokkos::realloc(forces_kk_, nall_, 3);
+//  forces_kk_.sync_host();
 
   Kokkos::fence();
 }
+
 template<class PairStyle>
-void MLIPModel::get_forces_lmp(PairStyle *fpair) {
+void MLIPModelLMP::get_forces(PairStyle *fpair) {
   forces_kk_.sync_host();
   fpair->atomKK->k_f.sync_host();
-  fpair->atomKK->k_tag.sync_host();
   const auto h_forces = forces_kk_.view_host();
   auto h_f = fpair->atomKK->k_f.view_host();
-  auto h_ilist = Kokkos::create_mirror_view(fpair->d_ilist);
-  auto h_tag = fpair->atomKK->k_tag.view_host();
-  Kokkos::deep_copy(h_ilist, fpair->d_ilist);
-  using LocalIdx = int;
-  for (int ii = 0; ii < inum_; ++ii) {
-    const LocalIdx i = h_ilist(ii);
-    const SiteIdx site_i = h_tag(i) - 1;
-    h_f(i, 0) = h_forces(site_i, 0);
-    h_f(i, 1) = h_forces(site_i, 1);
-    h_f(i, 2) = h_forces(site_i, 2);
+  auto h_neighbor_pair_index = neighbor_pair_index_kk_.view_host();
+  for (NeighborPairIdx npidx = 0; npidx < n_pairs_; ++npidx) {
+    const auto &ij = h_neighbor_pair_index(npidx);
+    const LocalIdx i = ij.first;
+    const LocalIdx j = ij.second;
+    h_f(i, 0) = h_forces(i, 0);
+    h_f(i, 1) = h_forces(i, 1);
+    h_f(i, 2) = h_forces(i, 2);
+    h_f(j, 0) = h_forces(j, 0);
+    h_f(j, 1) = h_forces(j, 1);
+    h_f(j, 2) = h_forces(j, 2);
   }
   fpair->atomKK->k_f.modify_host();
   fpair->atomKK->k_f.sync_device();
   Kokkos::fence();
 }
-} // namespace MLIP
 
+}  // MLIP_NS
 #endif //LMP_PAIR_MLIP_GTINV_KOKKOS_IMPL_H_

@@ -18,7 +18,7 @@ PairStyle(mlip_gtinv/kk/host,PairMLIPGtinvKokkos<LMPHostType>)
 #include "neigh_list_kokkos.h"
 
 #include "pair_mlip_gtinv.h"
-#include "mlipkk.h"
+#include "mlipkk_lmp.h"
 #include "mlipkk_types.h"
 
 namespace LAMMPS_NS {
@@ -66,7 +66,7 @@ class PairMLIPGtinvKokkos : public PairMLIPGtinv {
   typename AT::t_efloat_1d d_eatom;
   typename AT::t_virial_array d_vatom;
 
-  int inum;
+  int inum;  // number of I atoms neighbors are stored for
 
   int eflag, vflag;
 
@@ -86,12 +86,12 @@ class PairMLIPGtinvKokkos : public PairMLIPGtinv {
   typename MLIP_NS::vector1d reg_coeffs;
   typename MLIP_NS::MLIPInput *fp;
   typename MLIP_NS::Readgtinv gtinvdata;
-  typename MLIP_NS::MLIPModel *model;
+  typename MLIP_NS::MLIPModelLMP *model;
   template<class PairStyle, class NeighListKokkos>
-  friend void MLIP_NS::MLIPModel::set_structure_lmp(PairStyle *fpair, NeighListKokkos *k_list);
+  friend void MLIP_NS::MLIPModelLMP::set_structure(PairStyle *fpair, NeighListKokkos *k_list);
   friend void pair_virial_fdotr_compute<PairMLIPGtinvKokkos>(PairMLIPGtinvKokkos *);
   template<class PairStyle>
-  friend void MLIP_NS::MLIPModel::get_forces_lmp(PairStyle *fpair);
+  friend void MLIP_NS::MLIPModelLMP::get_forces(PairStyle *fpair);
 };
 } // namespace LAMMPS
 
