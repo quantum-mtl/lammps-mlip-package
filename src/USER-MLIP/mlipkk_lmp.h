@@ -19,7 +19,8 @@ class MLIPModelLMP : public MLIPModel {
   void initialize(const MLIPInput& input, const vector1d& reg_coeffs, const Readgtinv& gtinvdata);
   template<class NeighListKokkos>
   void compute(NeighListKokkos *k_list);
-  void compute_order_parameters();
+  template<class NeighListKokkos>
+  void compute_order_parameters(NeighListKokkos *k_list);
   template<class NeighListKokkos>
   void compute_structural_features(NeighListKokkos *k_list);
   template<class NeighListKokkos>
@@ -62,7 +63,7 @@ void MLIPModelLMP::compute(NeighListKokkos *k_list) {
     end = std::chrono::system_clock::now();
 #endif
 
-  MLIPModelLMP::compute_order_parameters();
+  MLIPModelLMP::compute_order_parameters<NeighListKokkos>(k_list);
 
 #ifdef _DEBUG
   time_op += std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::system_clock::now() - end).count();
@@ -113,6 +114,69 @@ void MLIPModelLMP::compute(NeighListKokkos *k_list) {
 }
 
 template<class NeighListKokkos>
+void MLIPModelLMP::compute_order_parameters(NeighListKokkos *k_list) {
+  Kokkos::parallel_for("init_anlm_half",
+                       Kokkos::MDRangePolicy<ExecSpace, Kokkos::Rank<4>>({0, 0, 0, 0}, {nall_, n_types_, n_fn_, n_lm_half_}),
+                       KOKKOS_CLASS_LAMBDA(const LocalIdx i, const ElementType type, const int n, const LMInfoIdx lmi) {
+                         d_anlm_r_(i, type, n, lmi) = 0.0;
+                         d_anlm_i_(i, type, n, lmi) = 0.0;
+                       }
+  );
+
+  const auto d_types = types_kk_.view_device();
+  const auto d_neighbor_pair_index = neighbor_pair_index_kk_.view_device();
+  const auto d_lm_info = lm_info_kk_.view_device();
+  sview_4d s_anlm_r (d_anlm_r_);
+  sview_4d s_anlm_i (d_anlm_i_);
+
+  // compute order paramters for m <= 0
+  Kokkos::parallel_for("anlm_half",
+                       Kokkos::MDRangePolicy<ExecSpace, Kokkos::Rank<3>>({0, 0, 0}, {n_pairs_, n_fn_, n_lm_half_}),
+                       KOKKOS_CLASS_LAMBDA(const NeighborPairIdx npidx, const int n, const LMInfoIdx lmi) {
+                         const auto& ij = d_neighbor_pair_index(npidx);
+                         const LocalIdx i = ij.first;
+                         const LocalIdx j = ij.second;
+
+                         const ElementType type_i = d_types(i);
+                         const ElementType type_j = d_types(j);
+
+                         auto s_anlm_r_a = s_anlm_r.access();
+                         auto s_anlm_i_a = s_anlm_i.access();
+
+                         const int l = d_lm_info(lmi, 0);
+                         const double scale = (l % 2) ? -1.0 : 1.0;  // sign for parity
+                         const Kokkos::complex<double> val = d_fn_(npidx, n) * d_ylm_(npidx, lmi);
+                         // neighbors_ is a half list!!!
+                         s_anlm_r_a(i, type_j, n, lmi) += val.real();
+                         s_anlm_i_a(i, type_j, n, lmi) -= val.imag();  // take c.c.
+                         if (i != j) {
+                           s_anlm_r_a(j, type_i, n, lmi) += val.real() * scale;
+                           s_anlm_i_a(j, type_i, n, lmi) -= val.imag() * scale;  // take c.c
+                         }
+                       }
+  );
+  Kokkos::Experimental::contribute(d_anlm_r_, s_anlm_r);
+  Kokkos::Experimental::contribute(d_anlm_i_, s_anlm_i);
+
+  // augment order paramters for m > 0
+  Kokkos::parallel_for("anlm_all",
+                       Kokkos::MDRangePolicy<Kokkos::Rank<4>>({0, 0, 0, 0}, {nall_, n_types_, n_fn_, n_lm_half_}),
+                       KOKKOS_CLASS_LAMBDA(const SiteIdx i, const ElementType type, const int n, const LMInfoIdx lmi) {
+                         const int m = d_lm_info(lmi, 1);
+                         const LMIdx lm1 = d_lm_info(lmi, 2);  // idx for (l, m)
+                         const LMIdx lm2 = d_lm_info(lmi, 3);  // idx for (l, -m)
+                         d_anlm_(i, type, n, lm1) = Kokkos::complex<double>(d_anlm_r_(i, type, n, lmi),
+                                                                            d_anlm_i_(i, type, n, lmi));
+                         double cc = (m % 2) ? -1.0 : 1.0;  // sign for complex conjugate
+                         d_anlm_(i, type, n, lm2) = Kokkos::complex<double>(cc * d_anlm_r_(i, type, n, lmi),
+                                                                            - cc * d_anlm_i_(i, type, n, lmi));
+                       }
+  );
+
+  Kokkos::fence();
+}
+
+template<class NeighListKokkos>
 void MLIPModelLMP::compute_structural_features(NeighListKokkos *k_list) {
   const auto d_types = types_kk_.view_device();
   const auto d_other_type = other_type_kk_.view_device();
@@ -123,18 +187,22 @@ void MLIPModelLMP::compute_structural_features(NeighListKokkos *k_list) {
   const auto d_lm_coeffs = lm_coeffs_kk_.view_device();
   auto d_structural_features = structural_features_kk_.view_device();
 
+  const auto d_ilist = k_list->d_ilist;
+
   Kokkos::parallel_for("init_structural_features",
-                       Kokkos::MDRangePolicy<ExecSpace, Kokkos::Rank<2>>({0, 0}, {nall_, n_des_}),
-                       KOKKOS_CLASS_LAMBDA(const SiteIdx i, const FeatureIdx fidx) {
+                       Kokkos::MDRangePolicy<ExecSpace, Kokkos::Rank<2>>({0, 0}, {inum_, n_des_}),
+                       KOKKOS_CLASS_LAMBDA(const int ii, const FeatureIdx fidx) {
+                         const LocalIdx i = d_ilist(ii);
                          d_structural_features(i, fidx) = 0.0;
                        }
   );
 
   Kokkos::parallel_for("structural_features",
-                       Kokkos::MDRangePolicy<ExecSpace, Kokkos::Rank<2>>({0, 0}, {nall_, n_des_}),
-                       KOKKOS_CLASS_LAMBDA(const SiteIdx i, const FeatureIdx fidx) {
+                       Kokkos::MDRangePolicy<ExecSpace, Kokkos::Rank<2>>({0, 0}, {inum_, n_des_}),
+                       KOKKOS_CLASS_LAMBDA(const int ii, const FeatureIdx fidx) {
                          const IrrepsTypeCombIdx itcidx = fidx % n_irreps_typecomb_;  // should be consistent with poly_.get_irreps_type_idx
 
+                         const LocalIdx i = d_ilist(ii);
                          const ElementType type_i = d_types(i);
                          if (!d_irreps_type_intersection(itcidx, type_i)) {
                            // not related element type
@@ -171,11 +239,13 @@ template<class NeighListKokkos>
 void MLIPModelLMP::compute_energy(NeighListKokkos *k_list) {
   const int num_poly_idx = n_reg_coeffs_;
   auto d_site_energy = site_energy_kk_.view_device();
+  auto d_ilist = k_list->d_ilist;
 
   // initialize
   Kokkos::parallel_for("init_energy",
-                       range_policy(0, nall_),
-                       KOKKOS_LAMBDA(const SiteIdx i) {
+                       range_policy(0, inum_),
+                       KOKKOS_LAMBDA(const int ii) {
+                         const LocalIdx i = d_ilist(ii);
                          d_site_energy(i) = 0.0;
                        }
   );
@@ -186,8 +256,9 @@ void MLIPModelLMP::compute_energy(NeighListKokkos *k_list) {
   // energy for each atom-i
   sview_1d sd_site_energy(d_site_energy);
   Kokkos::parallel_for("site_energy",
-                       Kokkos::MDRangePolicy<ExecSpace, Kokkos::Rank<2>>({0, 0}, {nall_, num_poly_idx}),
-                       KOKKOS_CLASS_LAMBDA(const SiteIdx i, const PolynomialIdx pidx) {
+                       Kokkos::MDRangePolicy<ExecSpace, Kokkos::Rank<2>>({0, 0}, {inum_, num_poly_idx}),
+                       KOKKOS_CLASS_LAMBDA(const int ii, const PolynomialIdx pidx) {
+                         const LocalIdx i = d_ilist(ii);
                          double feature = 1.0;
                          auto rowView = d_polynomial_index_.rowConst(pidx);
                          for (int ffidx = 0; ffidx < rowView.length; ++ffidx) {
@@ -205,7 +276,8 @@ void MLIPModelLMP::compute_energy(NeighListKokkos *k_list) {
   double energy = 0.0;
   Kokkos::parallel_reduce("energy",
                           range_policy(0, inum_),
-                          KOKKOS_CLASS_LAMBDA(const SiteIdx i, double& energy_tmp) {
+                          KOKKOS_CLASS_LAMBDA(const int ii, double& energy_tmp) {
+                            const LocalIdx i = d_ilist(ii);
                             energy_tmp += site_energy_kk_.d_view(i);
                           },
                           energy
