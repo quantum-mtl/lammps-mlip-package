@@ -301,7 +301,7 @@ void PairMLIPGtinvKokkos<DeviceType>::compute(int eflag_in, int vflag_in) {
   atomKK->sync(Host, datamask_read);
 
   model->set_structure<PairMLIPGtinvKokkos<DeviceType>, NeighListKokkos<DeviceType>>(this, k_list);
-  model->compute();
+  model->compute<NeighListKokkos<DeviceType>>(k_list);
   model->get_forces<PairMLIPGtinvKokkos<DeviceType>>(this);
 
   // From pair_eam_alloy_kokkos.cpp
