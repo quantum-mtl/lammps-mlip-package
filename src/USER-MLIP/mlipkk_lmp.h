@@ -1,5 +1,5 @@
 //
-// Created by Takayuki Nishiyama on 2021/07/16.
+// Created on 2021/07/16.
 //
 
 #ifndef LAMMPS_MLIP_PACKAGE_SRC_USER_MLIP_MLIPKK_LMP_H_
@@ -9,7 +9,7 @@
 #include "kokkos_type.h"
 
 namespace MLIP_NS {
-using LocalIdx = int;
+using LocalIdx = int;  // locally assigned indices for atoms on this proc
 
 class MLIPModelLMP : public MLIPModel {
  public:
@@ -19,12 +19,21 @@ class MLIPModelLMP : public MLIPModel {
   void initialize(const MLIPInput& input, const vector1d& reg_coeffs, const Readgtinv& gtinvdata);
   template<class NeighListKokkos>
   void compute(NeighListKokkos *k_list);
+
   template<class NeighListKokkos>
   void compute_order_parameters(NeighListKokkos *k_list);
   template<class NeighListKokkos>
+  void compute_order_parameters_full(NeighListKokkos *k_list);
+
+  template<class NeighListKokkos>
   void compute_structural_features(NeighListKokkos *k_list);
   template<class NeighListKokkos>
+  void compute_structural_features_full(NeighListKokkos *k_list);
+
+  template<class NeighListKokkos>
   void compute_energy(NeighListKokkos *k_list);
+  template<class NeighListKokkos>
+  void compute_energy_full(NeighListKokkos *k_list);
 
   // defined here for LAMMPS interface
   template<class PairStyle, class NeighListKokkos>
@@ -37,6 +46,10 @@ class MLIPModelLMP : public MLIPModel {
  protected:
   /* Total number of owned and ghost atoms on this proc*/
   int nall_;
+  /* Type of neighbor list, FULL, HALF, or HALFTHREAD. */
+  int neighflag_;
+  /* Newton's 3rd law setting: 0 for off, 1 for on. */
+  int newton_pair_;
 };
 }  // MLIP_NS
 
@@ -87,7 +100,7 @@ void MLIPModelLMP::compute(NeighListKokkos *k_list) {
     end = std::chrono::system_clock::now();
 #endif
 
-  compute_polynomial_adjoints();
+  // compute_polynomial_adjoints();
 
 #ifdef _DEBUG
   time_pa += std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::system_clock::now() - end).count();
@@ -95,7 +108,7 @@ void MLIPModelLMP::compute(NeighListKokkos *k_list) {
     end = std::chrono::system_clock::now();
 #endif
 
-  compute_basis_function_adjoints();
+  // compute_basis_function_adjoints();
 
 #ifdef _DEBUG
   time_ba += std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::system_clock::now() - end).count();
@@ -103,7 +116,7 @@ void MLIPModelLMP::compute(NeighListKokkos *k_list) {
     end = std::chrono::system_clock::now();
 #endif
 
-  compute_forces_and_stress();
+  // compute_forces_and_stress();
 
 #ifdef _DEBUG
   time_acc += std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::system_clock::now() - end).count();
@@ -113,10 +126,38 @@ void MLIPModelLMP::compute(NeighListKokkos *k_list) {
 
 }
 
+
 template<class NeighListKokkos>
 void MLIPModelLMP::compute_order_parameters(NeighListKokkos *k_list) {
-  Kokkos::parallel_for("init_anlm_half",
-                       Kokkos::MDRangePolicy<ExecSpace, Kokkos::Rank<4>>({0, 0, 0, 0}, {nall_, n_types_, n_fn_, n_lm_half_}),
+  if (neighflag_ == FULL) {
+    compute_order_parameters_full<NeighListKokkos>(k_list);
+  } else if (neighflag_ == HALF || neighflag_ == HALFTHREAD) {
+    MLIPModel::compute_order_parameters();
+  }
+}
+
+template<class NeighListKokkos>
+void MLIPModelLMP::compute_structural_features(NeighListKokkos *k_list) {
+  if (neighflag_ == FULL) {
+    compute_structural_features_full<NeighListKokkos>(k_list);
+  } else if (neighflag_ == HALF || neighflag_ == HALFTHREAD) {
+    MLIPModel::compute_structural_features();
+  }
+}
+
+template<class NeighListKokkos>
+void MLIPModelLMP::compute_energy(NeighListKokkos *k_list) {
+  if (neighflag_ == FULL) {
+    compute_energy_full<NeighListKokkos>(k_list);
+  } else if (neighflag_ == HALF || neighflag_ == HALFTHREAD) {
+    MLIPModel::compute_energy();
+  }
+}
+
+template<class NeighListKokkos>
+void MLIPModelLMP::compute_order_parameters_full(NeighListKokkos *k_list) {
+  Kokkos::parallel_for("init_anlm_full",
+                       Kokkos::MDRangePolicy<ExecSpace, Kokkos::Rank<4>>({0, 0, 0, 0}, {inum_, n_types_, n_fn_, n_lm_half_}),
                        KOKKOS_CLASS_LAMBDA(const LocalIdx i, const ElementType type, const int n, const LMInfoIdx lmi) {
                          d_anlm_r_(i, type, n, lmi) = 0.0;
                          d_anlm_i_(i, type, n, lmi) = 0.0;
@@ -128,9 +169,10 @@ void MLIPModelLMP::compute_order_parameters(NeighListKokkos *k_list) {
   const auto d_lm_info = lm_info_kk_.view_device();
   sview_4d s_anlm_r (d_anlm_r_);
   sview_4d s_anlm_i (d_anlm_i_);
+  // const auto d_ilist = k_list->d_ilist;
 
   // compute order paramters for m <= 0
-  Kokkos::parallel_for("anlm_half",
+  Kokkos::parallel_for("anlm_full",
                        Kokkos::MDRangePolicy<ExecSpace, Kokkos::Rank<3>>({0, 0, 0}, {n_pairs_, n_fn_, n_lm_half_}),
                        KOKKOS_CLASS_LAMBDA(const NeighborPairIdx npidx, const int n, const LMInfoIdx lmi) {
                          const auto& ij = d_neighbor_pair_index(npidx);
@@ -149,10 +191,10 @@ void MLIPModelLMP::compute_order_parameters(NeighListKokkos *k_list) {
                          // neighbors_ is a half list!!!
                          s_anlm_r_a(i, type_j, n, lmi) += val.real();
                          s_anlm_i_a(i, type_j, n, lmi) -= val.imag();  // take c.c.
-                         if (i != j) {
-                           s_anlm_r_a(j, type_i, n, lmi) += val.real() * scale;
-                           s_anlm_i_a(j, type_i, n, lmi) -= val.imag() * scale;  // take c.c
-                         }
+                        //  if (i != j) {
+                        //    s_anlm_r_a(j, type_i, n, lmi) += val.real() * scale;
+                        //    s_anlm_i_a(j, type_i, n, lmi) -= val.imag() * scale;  // take c.c
+                        //  }
                        }
   );
   Kokkos::Experimental::contribute(d_anlm_r_, s_anlm_r);
@@ -160,8 +202,8 @@ void MLIPModelLMP::compute_order_parameters(NeighListKokkos *k_list) {
 
   // augment order paramters for m > 0
   Kokkos::parallel_for("anlm_all",
-                       Kokkos::MDRangePolicy<Kokkos::Rank<4>>({0, 0, 0, 0}, {nall_, n_types_, n_fn_, n_lm_half_}),
-                       KOKKOS_CLASS_LAMBDA(const SiteIdx i, const ElementType type, const int n, const LMInfoIdx lmi) {
+                       Kokkos::MDRangePolicy<Kokkos::Rank<4>>({0, 0, 0, 0}, {inum_, n_types_, n_fn_, n_lm_half_}),
+                       KOKKOS_CLASS_LAMBDA(const LocalIdx i, const ElementType type, const int n, const LMInfoIdx lmi) {
                          const int m = d_lm_info(lmi, 1);
                          const LMIdx lm1 = d_lm_info(lmi, 2);  // idx for (l, m)
                          const LMIdx lm2 = d_lm_info(lmi, 3);  // idx for (l, -m)
@@ -177,7 +219,7 @@ void MLIPModelLMP::compute_order_parameters(NeighListKokkos *k_list) {
 }
 
 template<class NeighListKokkos>
-void MLIPModelLMP::compute_structural_features(NeighListKokkos *k_list) {
+void MLIPModelLMP::compute_structural_features_full(NeighListKokkos *k_list) {
   const auto d_types = types_kk_.view_device();
   const auto d_other_type = other_type_kk_.view_device();
   const auto d_irreps_type_intersection = irreps_type_intersection_.view_device();
@@ -236,7 +278,7 @@ void MLIPModelLMP::compute_structural_features(NeighListKokkos *k_list) {
 }
 
 template<class NeighListKokkos>
-void MLIPModelLMP::compute_energy(NeighListKokkos *k_list) {
+void MLIPModelLMP::compute_energy_full(NeighListKokkos *k_list) {
   const int num_poly_idx = n_reg_coeffs_;
   auto d_site_energy = site_energy_kk_.view_device();
   auto d_ilist = k_list->d_ilist;

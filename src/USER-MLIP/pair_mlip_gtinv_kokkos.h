@@ -71,6 +71,7 @@ class PairMLIPGtinvKokkos : public PairMLIPGtinv {
   int eflag, vflag;
 
   int neighflag;
+  int newton_pair;
 
 //  Kokkos::View<T_INT *, DeviceType> d_map;                    // mapping from atom types to elements
 

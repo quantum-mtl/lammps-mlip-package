@@ -202,9 +202,9 @@ void PairMLIPGtinvKokkos<DeviceType>::init_style() {
   // https://github.com/lammps/lammps/blob/584943fc928351bc29f41a132aee3586e0a2286a/src/MANYBODY/pair_tersoff.cpp#L366
   if (atom->tag_enable == 0)
     error->all(FLERR,"Pair style mlip_gtinv requires atom IDs");
-  if (force->newton_pair == 0) {
-    error->all(FLERR, "Pair style mlip_gtinv requires newton pair on");
-  }
+  // if (force->newton_pair == 0) {
+  //   error->all(FLERR, "Pair style mlip_gtinv requires newton pair on");
+  // }
 
   Pair::init_style(); // just request neighbor
 
@@ -219,15 +219,41 @@ void PairMLIPGtinvKokkos<DeviceType>::init_style() {
   neighbor->requests[irequest]->
       kokkos_device = std::is_same<DeviceType, LMPDeviceType>::value;
 
-  if (neighflag == FULL) {
-    neighbor->requests[irequest]->full = 1;
-    neighbor->requests[irequest]->half = 0;
-    error->all(FLERR, "Cannot (yet) use full neighbor list style with mlip_gtinv/kk");
-  } else if (neighflag == HALF || neighflag == HALFTHREAD) {
-    neighbor->requests[irequest]->full = 0; // 0?
-    neighbor->requests[irequest]->half = 1; // 1?
-  } else {
-    error->all(FLERR, "Must use half neighbor list style with mlip_gtinv/kk");
+  // Check flags:
+  // Only 'neigh full newton off' is allowed for MPI parallelization.
+  // Without MPI parallelization, 'neigh full newton off' and 'neigh half newton on' are allowed.
+  int nprocs;
+  MPI_Comm_size(world,&nprocs);
+  newton_pair = force->newton_pair;
+  if (nprocs==1){  // Without MPI
+    if (neighflag == FULL) {  // neigh full
+      if (newton_pair == 0) {  // newton off
+        neighbor->requests[irequest]->full = 1;
+        neighbor->requests[irequest]->half = 0;
+      } else {  // newton on
+        error->all(FLERR, "Must use 'neigh half newton on' or 'neigh full newton off' with mlip_gtinv/kk");
+      }
+    } else if (neighflag == HALF || neighflag == HALFTHREAD) {  // neigh half
+      if (newton_pair == 0) {  // newton off
+        error->all(FLERR, "Must use 'neigh half newton on' or 'neigh full newton off' with mlip_gtinv/kk");
+      } else {  // newton on
+        neighbor->requests[irequest]->full = 0;
+        neighbor->requests[irequest]->half = 1;
+      }
+    } else {
+      error->all(FLERR, "Must use 'neigh half newton on' or 'neigh full newton off' with mlip_gtinv/kk");
+    }
+  } else {  // With MPI
+    if (neighflag == FULL) {  // neigh full
+      if (newton_pair == 0) {  // newton off
+        neighbor->requests[irequest]->full = 1;
+        neighbor->requests[irequest]->half = 0;
+      } else {  // newton on
+        error->all(FLERR, "Cannot (yet) use 'neigh full newton on' with MPI parallelization for mlip_gtinv/kk");
+      }
+    } else if (neighflag == HALF || neighflag == HALFTHREAD) {  // neigh half
+      error->all(FLERR, "Cannot (yet) use neigh half with MPI parallelization for mlip_gtinv/kk");
+    }
   }
 }
 
@@ -302,7 +328,7 @@ void PairMLIPGtinvKokkos<DeviceType>::compute(int eflag_in, int vflag_in) {
 
   model->set_structure<PairMLIPGtinvKokkos<DeviceType>, NeighListKokkos<DeviceType>>(this, k_list);
   model->compute<NeighListKokkos<DeviceType>>(k_list);
-  model->get_forces<PairMLIPGtinvKokkos<DeviceType>>(this);
+  // model->get_forces<PairMLIPGtinvKokkos<DeviceType>>(this);
 
   // From pair_eam_alloy_kokkos.cpp
   // https://github.com/lammps/lammps/blob/998b76520e74b3a90580bf1a92155dcbe2843dba/src/KOKKOS/pair_eam_alloy_kokkos.cpp#L251-L252
@@ -368,6 +394,8 @@ void MLIPModelLMP::set_structure(PairStyle *fpair, NeighListKokkos* k_list) {
 //  LAMMPS_NS::tagint *tag = fpair->atom->tag;
   auto h_tag = fpair->atomKK->k_tag.view_host();
   const std::vector<ElementType> &types = fpair->types;
+  neighflag_ = fpair->neighflag;
+  newton_pair_ = fpair->newton_pair;
 
   fpair->atomKK->k_x.sync_host();
   fpair->atomKK->k_tag.sync_host();
@@ -399,7 +427,39 @@ void MLIPModelLMP::set_structure(PairStyle *fpair, NeighListKokkos* k_list) {
   auto h_neighbor_pair_index = neighbor_pair_index_kk_.view_host();
   auto h_neighbor_pair_displacements = neighbor_pair_displacements_kk_.view_host();
 
+  // Get neighbor indices.
+  // For full neighbor list, indices are stored as LocalIdx.
+  // For half neighbor list, indices are stored as SiteIdx (=tagint-1).
   NeighborPairIdx count_neighbor = 0;
+  if (neighflag_ == FULL) {
+    for (int ii = 0; ii < inum_; ++ii) {
+      const LocalIdx i = h_ilist(ii);
+      const int num_neighbors_i = h_numneigh(i);
+      for (int jj = 0; jj < num_neighbors_i; ++jj) {
+        LocalIdx j = h_neighbors(i, jj);
+        j &= NEIGHMASK;
+        h_neighbor_pair_index(count_neighbor) = Kokkos::pair<LocalIdx, LocalIdx>(i, j);
+        ++count_neighbor;
+      }
+    }
+  } else if (neighflag_ == HALF || neighflag_ == HALFTHREAD) {
+    for (int ii = 0; ii < inum_; ++ii) {
+      const LocalIdx i = h_ilist(ii);
+      const int num_neighbors_i = h_numneigh(i);
+      const SiteIdx site_i = h_tag(i) - 1;
+      for (int jj = 0; jj < num_neighbors_i; ++jj) {
+        LocalIdx j = h_neighbors(i, jj);
+        j &= NEIGHMASK;
+        const SiteIdx site_j = h_tag(j) - 1;
+        h_neighbor_pair_index(count_neighbor) = Kokkos::pair<SiteIdx, SiteIdx>(site_i, site_j);
+        ++count_neighbor;
+      }
+    }
+  }
+
+  // Store pair displacements.
+  // Displacements are calculated in local index, i.e. including ghost atoms.
+  count_neighbor = 0;
   for (int ii = 0; ii < inum_; ++ii) {
     const LocalIdx i = h_ilist(ii);
 //    const LAMMPS_NS::AtomNeighborsConst neighbors_i = k_list->get_neighbors_const(i);
@@ -408,10 +468,9 @@ void MLIPModelLMP::set_structure(PairStyle *fpair, NeighListKokkos* k_list) {
     const X_FLOAT ytmp = h_x(i,1);
     const X_FLOAT ztmp = h_x(i,2);
     for (int jj = 0; jj < num_neighbors_i; ++jj) {
-      SiteIdx j = h_neighbors(i,jj);
+      LocalIdx j = h_neighbors(i,jj);
 //      SiteIdx j = neighbors_i(jj);
       j &= NEIGHMASK;
-      h_neighbor_pair_index(count_neighbor) = Kokkos::pair<LocalIdx , LocalIdx>(i, j);
       h_neighbor_pair_displacements(count_neighbor, 0) = h_x(j, 0) - xtmp;
       h_neighbor_pair_displacements(count_neighbor, 1) = h_x(j, 1) - ytmp;
       h_neighbor_pair_displacements(count_neighbor, 2) = h_x(j, 2) - ztmp;
@@ -427,31 +486,53 @@ void MLIPModelLMP::set_structure(PairStyle *fpair, NeighListKokkos* k_list) {
   Kokkos::realloc(neighbor_pair_typecomb_kk_, n_pairs_);
 //  neighbor_pair_typecomb_kk_.sync_host();
   auto h_neighbor_pair_typecomb = neighbor_pair_typecomb_kk_.view_host();
-  for (NeighborPairIdx npidx = 0; npidx < n_pairs_; ++npidx) {
-    const auto &ij = h_neighbor_pair_index(npidx);
-    const SiteIdx i = h_tag(ij.first)-1; // is tag[i] - 1
-    const SiteIdx j = h_tag(ij.second)-1; // is tag[j] - 1
-    const ElementType type_i = types[i];
-    const ElementType type_j = types[j];
-    h_neighbor_pair_typecomb(npidx) = type_pairs_kk_.h_view(type_i, type_j);
+  if (neighflag_ == FULL) {
+    for (NeighborPairIdx npidx = 0; npidx < n_pairs_; ++npidx) {
+      const auto &ij = h_neighbor_pair_index(npidx);
+      const SiteIdx i = h_tag(ij.first) - 1; // is tag[i] - 1
+      const SiteIdx j = h_tag(ij.second) - 1; // is tag[j] - 1
+      const ElementType type_i = types[i];
+      const ElementType type_j = types[j];
+      h_neighbor_pair_typecomb(npidx) = type_pairs_kk_.h_view(type_i, type_j);
+    }
+  } else if (neighflag_ == HALF || neighflag_ == HALFTHREAD) {
+    for (NeighborPairIdx npidx = 0; npidx < n_pairs_; ++npidx) {
+      const auto &ij = h_neighbor_pair_index(npidx);
+      const SiteIdx i = ij.first;
+      const SiteIdx j = ij.second;
+      const ElementType type_i = types[i];
+      const ElementType type_j = types[j];
+      h_neighbor_pair_typecomb(npidx) = type_pairs_kk_.h_view(type_i, type_j);
+    }
   }
   neighbor_pair_typecomb_kk_.modify_host();
   neighbor_pair_typecomb_kk_.sync_device();
 
   // types
-  Kokkos::realloc(types_kk_, nall_);
-//  types_kk_.sync_host();
-  auto h_types = types_kk_.view_host();
-  for (NeighborPairIdx npidx = 0; npidx < n_pairs_; ++npidx) {
-    const auto &ij = h_neighbor_pair_index(npidx);
-    const LocalIdx i = ij.first;
-    const LocalIdx j = ij.second;
-    const SiteIdx site_i = h_tag(i)-1;
-    const SiteIdx site_j = h_tag(j)-1;
-    h_types(i) = types[site_i];
-    h_types(j) = types[site_j];
+  if (neighflag_ == FULL) {
+    Kokkos::realloc(types_kk_, nall_);
+    auto h_types = types_kk_.view_host();
+    for (NeighborPairIdx npidx = 0; npidx < n_pairs_; ++npidx) {
+      const auto &ij = h_neighbor_pair_index(npidx);
+      const LocalIdx i = ij.first;
+      const LocalIdx j = ij.second;
+      const SiteIdx site_i = h_tag(i) - 1;
+      const SiteIdx site_j = h_tag(j) - 1;
+      h_types(i) = types[site_i];
+      h_types(j) = types[site_j];
+    }
+  } else if (neighflag_ == HALF || neighflag_ == HALFTHREAD) {
+    Kokkos::realloc(types_kk_, inum_);
+    auto h_types = types_kk_.view_host();
+    for (NeighborPairIdx npidx = 0; npidx < n_pairs_; ++npidx) {
+      const auto &ij = h_neighbor_pair_index(npidx);
+      const SiteIdx site_i = ij.first;
+      const SiteIdx site_j = ij.second;
+      h_types(site_i) = types[site_i];
+      h_types(site_j) = types[site_j];
+    }
   }
-  types_kk_.modify_host();
+    types_kk_.modify_host();
   types_kk_.sync_device();
 
   // resize views
@@ -466,17 +547,17 @@ void MLIPModelLMP::set_structure(PairStyle *fpair, NeighListKokkos* k_list) {
   Kokkos::realloc(d_ylm_dy_, n_pairs_, n_lm_half_);
   Kokkos::realloc(d_ylm_dz_, n_pairs_, n_lm_half_);
 
-  Kokkos::realloc(d_anlm_r_, nall_, n_types_, n_fn_, n_lm_half_);
-  Kokkos::realloc(d_anlm_i_, nall_, n_types_, n_fn_, n_lm_half_);
-  Kokkos::realloc(d_anlm_, nall_, n_types_, n_fn_, n_lm_all_);
-  Kokkos::realloc(structural_features_kk_, nall_, n_des_);
+  Kokkos::realloc(d_anlm_r_, inum_, n_types_, n_fn_, n_lm_half_);
+  Kokkos::realloc(d_anlm_i_, inum_, n_types_, n_fn_, n_lm_half_);
+  Kokkos::realloc(d_anlm_, inum_, n_types_, n_fn_, n_lm_all_);
+  Kokkos::realloc(structural_features_kk_, inum_, n_des_);
 //  structural_features_kk_.sync_host();
-  Kokkos::realloc(d_polynomial_adjoints_, nall_, n_des_);
-  Kokkos::realloc(d_basis_function_adjoints_, nall_, n_typecomb_, n_fn_, n_lm_half_);
+  Kokkos::realloc(d_polynomial_adjoints_, inum_, n_des_);
+  Kokkos::realloc(d_basis_function_adjoints_, inum_, n_typecomb_, n_fn_, n_lm_half_);
 
-  Kokkos::realloc(site_energy_kk_, nall_);
+  Kokkos::realloc(site_energy_kk_, inum_);
 //  site_energy_kk_.sync_host();
-  Kokkos::realloc(forces_kk_, nall_, 3);
+  Kokkos::realloc(forces_kk_, inum_, 3);
 //  forces_kk_.sync_host();
 
   Kokkos::fence();
