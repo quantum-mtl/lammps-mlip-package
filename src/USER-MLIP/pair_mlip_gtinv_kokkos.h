@@ -87,12 +87,18 @@ class PairMLIPGtinvKokkos : public PairMLIPGtinv {
   typename MLIP_NS::vector1d reg_coeffs;
   typename MLIP_NS::MLIPInput *fp;
   typename MLIP_NS::Readgtinv gtinvdata;
-  typename MLIP_NS::MLIPModelLMP *model;
+  typename MLIP_NS::MLIPModelLMP<PairMLIPGtinvKokkos<DeviceType>, NeighListKokkos<DeviceType>> *model;
   template<class PairStyle, class NeighListKokkos>
-  friend void MLIP_NS::MLIPModelLMP::set_structure(PairStyle *fpair, NeighListKokkos *k_list);
+  friend void MLIP_NS::MLIPModelLMP<PairStyle, NeighListKokkos>::initialize(const MLIP_NS::MLIPInput &input,
+                                                                            const vector1d &reg_coeffs,
+                                                                            const Readgtinv &gtinvdata,
+                                                                            PairStyle *fpair);
+  template<class PairStyle, class NeighListKokkos>
+  friend void MLIP_NS::MLIPModelLMP<PairStyle, NeighListKokkos>::set_structure(PairStyle *fpair,
+                                                                               NeighListKokkos *k_list);
   friend void pair_virial_fdotr_compute<PairMLIPGtinvKokkos>(PairMLIPGtinvKokkos *);
-  template<class PairStyle>
-  friend void MLIP_NS::MLIPModelLMP::get_forces(PairStyle *fpair);
+  template<class PairStyle, class NeighListKokkos>
+  friend void MLIP_NS::MLIPModelLMP<PairStyle, NeighListKokkos>::get_forces(PairStyle *fpair);
 };
 } // namespace LAMMPS
 

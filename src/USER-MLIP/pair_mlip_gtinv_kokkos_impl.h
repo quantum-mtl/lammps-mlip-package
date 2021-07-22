@@ -115,8 +115,8 @@ void PairMLIPGtinvKokkos<DeviceType>::coeff(int narg, char **arg) {
       delete model;
       model = nullptr;
     }
-    model = new MLIP_NS::MLIPModelLMP();
-    model->initialize(*fp, reg_coeffs, gtinvdata);
+    model = new MLIP_NS::MLIPModelLMP<PairMLIPGtinvKokkos<DeviceType>, NeighListKokkos<DeviceType>>();
+    model->initialize(*fp, reg_coeffs, gtinvdata, this);
   }
 
   // https://github.com/lammps/lammps/blob/584943fc928351bc29f41a132aee3586e0a2286a/src/KOKKOS/pair_eam_alloy_kokkos.cpp#L940-L952
@@ -326,8 +326,8 @@ void PairMLIPGtinvKokkos<DeviceType>::compute(int eflag_in, int vflag_in) {
 
   atomKK->sync(Host, datamask_read);
 
-  model->set_structure<PairMLIPGtinvKokkos<DeviceType>, NeighListKokkos<DeviceType>>(this, k_list);
-  model->compute<NeighListKokkos<DeviceType>>(k_list);
+  model->set_structure(this, k_list);
+  model->compute(k_list);
   // model->get_forces<PairMLIPGtinvKokkos<DeviceType>>(this);
 
   // From pair_eam_alloy_kokkos.cpp
@@ -384,7 +384,7 @@ void PairMLIPGtinvKokkos<DeviceType>::compute(int eflag_in, int vflag_in) {
 
 namespace MLIP_NS{
 template<class PairStyle, class NeighListKokkos>
-void MLIPModelLMP::set_structure(PairStyle *fpair, NeighListKokkos* k_list) {
+void MLIPModelLMP<PairStyle, NeighListKokkos>::set_structure(PairStyle *fpair, NeighListKokkos *k_list) {
   auto d_numneigh = k_list->d_numneigh;
   auto d_neighbors = k_list->d_neighbors;
   auto d_ilist = k_list->d_ilist;
@@ -394,8 +394,6 @@ void MLIPModelLMP::set_structure(PairStyle *fpair, NeighListKokkos* k_list) {
 //  LAMMPS_NS::tagint *tag = fpair->atom->tag;
   auto h_tag = fpair->atomKK->k_tag.view_host();
   const std::vector<ElementType> &types = fpair->types;
-  neighflag_ = fpair->neighflag;
-  newton_pair_ = fpair->newton_pair;
 
   fpair->atomKK->k_x.sync_host();
   fpair->atomKK->k_tag.sync_host();
@@ -563,8 +561,8 @@ void MLIPModelLMP::set_structure(PairStyle *fpair, NeighListKokkos* k_list) {
   Kokkos::fence();
 }
 
-template<class PairStyle>
-void MLIPModelLMP::get_forces(PairStyle *fpair) {
+template<class PairStyle, class NeighListKokkos>
+void MLIPModelLMP<PairStyle, NeighListKokkos>::get_forces(PairStyle *fpair) {
   forces_kk_.sync_host();
   fpair->atomKK->k_f.sync_host();
   const auto h_forces = forces_kk_.view_host();
