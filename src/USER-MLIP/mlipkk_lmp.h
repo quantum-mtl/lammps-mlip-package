@@ -11,6 +11,14 @@
 namespace MLIP_NS {
 using LocalIdx = int;  // locally assigned indices for atoms on this proc
 
+// For overloading compute functions.
+// Use as a flag.
+struct NeighFull {};
+struct NeighHalf {};
+struct NeighHalfThread {};
+struct NewtonOn {};
+struct NewtonOff {};
+
 template<class PairStyle, class NeighListKokkos>
 class MLIPModelLMP : public MLIPModel {
  public:
@@ -21,13 +29,19 @@ class MLIPModelLMP : public MLIPModel {
   void compute(NeighListKokkos *k_list);
 
   void compute_order_parameters(NeighListKokkos *k_list);
-  void compute_order_parameters_full(NeighListKokkos *k_list);
+  void compute_order_parameters(NeighFull neighflag, NewtonOff newton_pair, NeighListKokkos *k_list);
+  void compute_order_parameters(NeighHalfThread neighflag, NewtonOn newton_pair, NeighListKokkos *k_list);
+  void compute_order_parameters(NeighHalf neighflag, NewtonOn newton_pair, NeighListKokkos *k_list);
 
   void compute_structural_features(NeighListKokkos *k_list);
-  void compute_structural_features_full(NeighListKokkos *k_list);
+  void compute_structural_features(NeighFull neighflag, NewtonOff newton_pair, NeighListKokkos *k_list);
+  void compute_structural_features(NeighHalfThread neighflag, NewtonOn newton_pair, NeighListKokkos *k_list);
+  void compute_structural_features(NeighHalf neighflag, NewtonOn newton_pair, NeighListKokkos *k_list);
 
   void compute_energy(NeighListKokkos *k_list);
-  void compute_energy_full(NeighListKokkos *k_list);
+  void compute_energy(NeighFull neighflag, NewtonOff newton_pair, NeighListKokkos *k_list);
+  void compute_energy(NeighHalfThread neighflag, NewtonOn newton_pair, NeighListKokkos *k_list);
+  void compute_energy(NeighHalf neighflag, NewtonOn newton_pair, NeighListKokkos *k_list);
 
   // defined here for LAMMPS interface
   void set_structure(PairStyle *fpair, NeighListKokkos* k_list);
@@ -42,6 +56,12 @@ class MLIPModelLMP : public MLIPModel {
   int neighflag_;
   /* Newton's 3rd law setting: 0 for off, 1 for on. */
   int newton_pair_;
+
+  NeighFull neighfull_;
+  NeighHalf neighhalf_;
+  NeighHalfThread neighhalfthread_;
+  NewtonOn newtonon_;
+  NewtonOff newtonoff_;
 };
 }  // MLIP_NS
 
@@ -133,32 +153,38 @@ void MLIPModelLMP<PairStyle, NeighListKokkos>::compute(NeighListKokkos *k_list) 
 template<class PairStyle, class NeighListKokkos>
 void MLIPModelLMP<PairStyle, NeighListKokkos>::compute_order_parameters(NeighListKokkos *k_list) {
   if (neighflag_ == FULL) {
-    compute_order_parameters_full(k_list);
-  } else if (neighflag_ == HALF || neighflag_ == HALFTHREAD) {
-    MLIPModel::compute_order_parameters();
+    compute_order_parameters(neighfull_, newtonoff_, k_list);
+  } else if (neighflag_ == HALF) {
+    compute_order_parameters(neighhalf_, newtonon_, k_list);
+  } else if (neighflag_ == HALFTHREAD) {
+    compute_order_parameters(neighhalfthread_, newtonon_, k_list);
   }
 }
 
 template<class PairStyle, class NeighListKokkos>
 void MLIPModelLMP<PairStyle, NeighListKokkos>::compute_structural_features(NeighListKokkos *k_list) {
   if (neighflag_ == FULL) {
-    compute_structural_features_full(k_list);
-  } else if (neighflag_ == HALF || neighflag_ == HALFTHREAD) {
-    MLIPModel::compute_structural_features();
+    compute_structural_features(neighfull_, newtonoff_, k_list);
+  } else if (neighflag_ == HALF) {
+    compute_structural_features(neighhalf_, newtonon_, k_list);
+  } else if (neighflag_ == HALFTHREAD) {
+    compute_structural_features(neighhalfthread_, newtonon_, k_list);
   }
 }
 
 template<class PairStyle, class NeighListKokkos>
 void MLIPModelLMP<PairStyle, NeighListKokkos>::compute_energy(NeighListKokkos *k_list) {
   if (neighflag_ == FULL) {
-    compute_energy_full(k_list);
-  } else if (neighflag_ == HALF || neighflag_ == HALFTHREAD) {
-    MLIPModel::compute_energy();
+    compute_energy(neighfull_, newtonoff_, k_list);
+  } else if (neighflag_ == HALF) {
+    compute_energy(neighhalf_, newtonon_, k_list);
+  } else if (neighflag_ == HALFTHREAD) {
+    compute_energy(neighhalfthread_, newtonon_, k_list);
   }
 }
 
 template<class PairStyle, class NeighListKokkos>
-void MLIPModelLMP<PairStyle, NeighListKokkos>::compute_order_parameters_full(NeighListKokkos *k_list) {
+void MLIPModelLMP<PairStyle, NeighListKokkos>::compute_order_parameters(NeighFull neighflag, NewtonOff newton_pair, NeighListKokkos *k_list) {
   Kokkos::parallel_for("init_anlm_full",
                        Kokkos::MDRangePolicy<ExecSpace, Kokkos::Rank<4>>({0, 0, 0, 0}, {inum_, n_types_, n_fn_, n_lm_half_}),
                        KOKKOS_CLASS_LAMBDA(const LocalIdx i, const ElementType type, const int n, const LMInfoIdx lmi) {
@@ -222,7 +248,21 @@ void MLIPModelLMP<PairStyle, NeighListKokkos>::compute_order_parameters_full(Nei
 }
 
 template<class PairStyle, class NeighListKokkos>
-void MLIPModelLMP<PairStyle, NeighListKokkos>::compute_structural_features_full(NeighListKokkos *k_list) {
+void MLIPModelLMP<PairStyle, NeighListKokkos>::compute_order_parameters(NeighHalfThread neighflag,
+                                                                        NewtonOn newton_pair,
+                                                                        NeighListKokkos *k_list) {
+  MLIPModel::compute_order_parameters();
+}
+
+template<class PairStyle, class NeighListKokkos>
+void MLIPModelLMP<PairStyle, NeighListKokkos>::compute_order_parameters(NeighHalf neighflag,
+                                                                        NewtonOn newton_pair,
+                                                                        NeighListKokkos *k_list) {
+  MLIPModel::compute_order_parameters();
+}
+
+template<class PairStyle, class NeighListKokkos>
+void MLIPModelLMP<PairStyle, NeighListKokkos>::compute_structural_features(NeighFull neighflag, NewtonOff newton_pair, NeighListKokkos *k_list) {
   const auto d_types = types_kk_.view_device();
   const auto d_other_type = other_type_kk_.view_device();
   const auto d_irreps_type_intersection = irreps_type_intersection_.view_device();
@@ -281,7 +321,21 @@ void MLIPModelLMP<PairStyle, NeighListKokkos>::compute_structural_features_full(
 }
 
 template<class PairStyle, class NeighListKokkos>
-void MLIPModelLMP<PairStyle, NeighListKokkos>::compute_energy_full(NeighListKokkos *k_list) {
+void MLIPModelLMP<PairStyle, NeighListKokkos>::compute_structural_features(NeighHalfThread neighflag,
+                                                                           NewtonOn newton_pair,
+                                                                           NeighListKokkos *k_list) {
+  MLIPModel::compute_structural_features();
+}
+
+template<class PairStyle, class NeighListKokkos>
+void MLIPModelLMP<PairStyle, NeighListKokkos>::compute_structural_features(NeighHalf neighflag,
+                                                                           NewtonOn newton_pair,
+                                                                           NeighListKokkos *k_list) {
+  MLIPModel::compute_structural_features();
+}
+
+template<class PairStyle, class NeighListKokkos>
+void MLIPModelLMP<PairStyle, NeighListKokkos>::compute_energy(NeighFull neighflag, NewtonOff newton_pair, NeighListKokkos *k_list) {
   const int num_poly_idx = n_reg_coeffs_;
   auto d_site_energy = site_energy_kk_.view_device();
   auto d_ilist = k_list->d_ilist;
@@ -331,6 +385,20 @@ void MLIPModelLMP<PairStyle, NeighListKokkos>::compute_energy_full(NeighListKokk
   energy_ = energy;
 
   Kokkos::fence();
+}
+
+template<class PairStyle, class NeighListKokkos>
+void MLIPModelLMP<PairStyle, NeighListKokkos>::compute_energy(NeighHalfThread neighflag,
+                                                              NewtonOn newton_pair,
+                                                              NeighListKokkos *k_list) {
+  MLIPModel::compute_energy();
+}
+
+template<class PairStyle, class NeighListKokkos>
+void MLIPModelLMP<PairStyle, NeighListKokkos>::compute_energy(NeighHalf neighflag,
+                                                              NewtonOn newton_pair,
+                                                              NeighListKokkos *k_list) {
+  MLIPModel::compute_energy();
 }
 
 }  // MLIP_NS
