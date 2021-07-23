@@ -389,6 +389,7 @@ void MLIPModelLMP<PairStyle, NeighListKokkos>::set_structure(PairStyle *fpair, N
   auto d_neighbors = k_list->d_neighbors;
   auto d_ilist = k_list->d_ilist;
   inum_ = k_list->inum;  // Number of I atoms neighbors are stored for
+  nlocal_ = fpair->atomKK->nlocal;  // Number of owned atoms in this proc.
   nall_ = fpair->atomKK->nlocal + fpair->atomKK->nghost;  // Total number of owned and ghost atoms on this proc
   auto h_x = fpair->atomKK->k_x.view_host();
 //  LAMMPS_NS::tagint *tag = fpair->atom->tag;
@@ -409,7 +410,7 @@ void MLIPModelLMP<PairStyle, NeighListKokkos>::set_structure(PairStyle *fpair, N
   // TODO: atom-first indexing for GPU
   n_pairs_ = 0;
   for (int ii = 0; ii < inum_; ++ii) {
-    const LocalIdx i = h_ilist(ii);
+    const LMPLocalIdx i = h_ilist(ii);
     n_pairs_ += h_numneigh(i);
   }
 //  Kokkos::parallel_reduce("number of (i, j) neighbors", inum, KOKKOS_LAMBDA(const int& i, int& lsum){
@@ -426,30 +427,35 @@ void MLIPModelLMP<PairStyle, NeighListKokkos>::set_structure(PairStyle *fpair, N
   auto h_neighbor_pair_displacements = neighbor_pair_displacements_kk_.view_host();
 
   // Get neighbor indices.
-  // For full neighbor list, indices are stored as LocalIdx.
-  // For half neighbor list, indices are stored as SiteIdx (=tagint-1).
+  // For full neighbor list, indices are stored as LMPLocalIdx.
+  // For half neighbor list, indices are stored as LMPAtomID (=tagint-1).
   NeighborPairIdx count_neighbor = 0;
   if (neighflag_ == FULL) {
     for (int ii = 0; ii < inum_; ++ii) {
-      const LocalIdx i = h_ilist(ii);
-      const int num_neighbors_i = h_numneigh(i);
-      for (int jj = 0; jj < num_neighbors_i; ++jj) {
-        LocalIdx j = h_neighbors(i, jj);
-        j &= NEIGHMASK;
-        h_neighbor_pair_index(count_neighbor) = Kokkos::pair<LocalIdx, LocalIdx>(i, j);
-        ++count_neighbor;
+      const LMPLocalIdx i = h_ilist(ii);
+      // Store pair index centered on owned atom.
+      // i is restricted to owned atom.
+      // j can be greater than nlocal_, i.e. ghost atom.
+      if (i < nlocal_) {
+        const int num_neighbors_i = h_numneigh(i);
+        for (int jj = 0; jj < num_neighbors_i; ++jj) {
+          LMPLocalIdx j = h_neighbors(i, jj);
+          j &= NEIGHMASK;
+          h_neighbor_pair_index(count_neighbor) = Kokkos::pair<LMPLocalIdx, LMPLocalIdx>(i, j);
+          ++count_neighbor;
+        }
       }
     }
   } else if (neighflag_ == HALF || neighflag_ == HALFTHREAD) {
     for (int ii = 0; ii < inum_; ++ii) {
-      const LocalIdx i = h_ilist(ii);
+      const LMPLocalIdx i = h_ilist(ii);
       const int num_neighbors_i = h_numneigh(i);
-      const SiteIdx site_i = h_tag(i) - 1;
+      const LMPAtomID site_i = h_tag(i) - 1;
       for (int jj = 0; jj < num_neighbors_i; ++jj) {
-        LocalIdx j = h_neighbors(i, jj);
+        LMPLocalIdx j = h_neighbors(i, jj);
         j &= NEIGHMASK;
-        const SiteIdx site_j = h_tag(j) - 1;
-        h_neighbor_pair_index(count_neighbor) = Kokkos::pair<SiteIdx, SiteIdx>(site_i, site_j);
+        const LMPAtomID site_j = h_tag(j) - 1;
+        h_neighbor_pair_index(count_neighbor) = Kokkos::pair<LMPAtomID, LMPAtomID>(site_i, site_j);
         ++count_neighbor;
       }
     }
@@ -459,20 +465,22 @@ void MLIPModelLMP<PairStyle, NeighListKokkos>::set_structure(PairStyle *fpair, N
   // Displacements are calculated in local index, i.e. including ghost atoms.
   count_neighbor = 0;
   for (int ii = 0; ii < inum_; ++ii) {
-    const LocalIdx i = h_ilist(ii);
+    const LMPLocalIdx i = h_ilist(ii);
 //    const LAMMPS_NS::AtomNeighborsConst neighbors_i = k_list->get_neighbors_const(i);
-    const int num_neighbors_i = h_numneigh(i);
-    const X_FLOAT xtmp = h_x(i,0);
-    const X_FLOAT ytmp = h_x(i,1);
-    const X_FLOAT ztmp = h_x(i,2);
-    for (int jj = 0; jj < num_neighbors_i; ++jj) {
-      LocalIdx j = h_neighbors(i,jj);
+    if (i < nlocal_) {
+      const int num_neighbors_i = h_numneigh(i);
+      const X_FLOAT xtmp = h_x(i, 0);
+      const X_FLOAT ytmp = h_x(i, 1);
+      const X_FLOAT ztmp = h_x(i, 2);
+      for (int jj = 0; jj < num_neighbors_i; ++jj) {
+        LMPLocalIdx j = h_neighbors(i, jj);
 //      SiteIdx j = neighbors_i(jj);
-      j &= NEIGHMASK;
-      h_neighbor_pair_displacements(count_neighbor, 0) = h_x(j, 0) - xtmp;
-      h_neighbor_pair_displacements(count_neighbor, 1) = h_x(j, 1) - ytmp;
-      h_neighbor_pair_displacements(count_neighbor, 2) = h_x(j, 2) - ztmp;
-      ++count_neighbor;
+        j &= NEIGHMASK;
+        h_neighbor_pair_displacements(count_neighbor, 0) = h_x(j, 0) - xtmp;
+        h_neighbor_pair_displacements(count_neighbor, 1) = h_x(j, 1) - ytmp;
+        h_neighbor_pair_displacements(count_neighbor, 2) = h_x(j, 2) - ztmp;
+        ++count_neighbor;
+      }
     }
   }
   neighbor_pair_index_kk_.modify_host();
@@ -487,8 +495,8 @@ void MLIPModelLMP<PairStyle, NeighListKokkos>::set_structure(PairStyle *fpair, N
   if (neighflag_ == FULL) {
     for (NeighborPairIdx npidx = 0; npidx < n_pairs_; ++npidx) {
       const auto &ij = h_neighbor_pair_index(npidx);
-      const SiteIdx i = h_tag(ij.first) - 1; // is tag[i] - 1
-      const SiteIdx j = h_tag(ij.second) - 1; // is tag[j] - 1
+      const LMPAtomID i = h_tag(ij.first) - 1;
+      const LMPAtomID j = h_tag(ij.second) - 1;
       const ElementType type_i = types[i];
       const ElementType type_j = types[j];
       h_neighbor_pair_typecomb(npidx) = type_pairs_kk_.h_view(type_i, type_j);
@@ -496,8 +504,8 @@ void MLIPModelLMP<PairStyle, NeighListKokkos>::set_structure(PairStyle *fpair, N
   } else if (neighflag_ == HALF || neighflag_ == HALFTHREAD) {
     for (NeighborPairIdx npidx = 0; npidx < n_pairs_; ++npidx) {
       const auto &ij = h_neighbor_pair_index(npidx);
-      const SiteIdx i = ij.first;
-      const SiteIdx j = ij.second;
+      const LMPAtomID i = ij.first;
+      const LMPAtomID j = ij.second;
       const ElementType type_i = types[i];
       const ElementType type_j = types[j];
       h_neighbor_pair_typecomb(npidx) = type_pairs_kk_.h_view(type_i, type_j);
@@ -512,10 +520,10 @@ void MLIPModelLMP<PairStyle, NeighListKokkos>::set_structure(PairStyle *fpair, N
     auto h_types = types_kk_.view_host();
     for (NeighborPairIdx npidx = 0; npidx < n_pairs_; ++npidx) {
       const auto &ij = h_neighbor_pair_index(npidx);
-      const LocalIdx i = ij.first;
-      const LocalIdx j = ij.second;
-      const SiteIdx site_i = h_tag(i) - 1;
-      const SiteIdx site_j = h_tag(j) - 1;
+      const LMPLocalIdx i = ij.first;
+      const LMPLocalIdx j = ij.second;
+      const LMPAtomID site_i = h_tag(i) - 1;
+      const LMPAtomID site_j = h_tag(j) - 1;
       h_types(i) = types[site_i];
       h_types(j) = types[site_j];
     }
@@ -524,8 +532,8 @@ void MLIPModelLMP<PairStyle, NeighListKokkos>::set_structure(PairStyle *fpair, N
     auto h_types = types_kk_.view_host();
     for (NeighborPairIdx npidx = 0; npidx < n_pairs_; ++npidx) {
       const auto &ij = h_neighbor_pair_index(npidx);
-      const SiteIdx site_i = ij.first;
-      const SiteIdx site_j = ij.second;
+      const LMPAtomID site_i = ij.first;
+      const LMPAtomID site_j = ij.second;
       h_types(site_i) = types[site_i];
       h_types(site_j) = types[site_j];
     }
@@ -545,17 +553,17 @@ void MLIPModelLMP<PairStyle, NeighListKokkos>::set_structure(PairStyle *fpair, N
   Kokkos::realloc(d_ylm_dy_, n_pairs_, n_lm_half_);
   Kokkos::realloc(d_ylm_dz_, n_pairs_, n_lm_half_);
 
-  Kokkos::realloc(d_anlm_r_, inum_, n_types_, n_fn_, n_lm_half_);
-  Kokkos::realloc(d_anlm_i_, inum_, n_types_, n_fn_, n_lm_half_);
-  Kokkos::realloc(d_anlm_, inum_, n_types_, n_fn_, n_lm_all_);
-  Kokkos::realloc(structural_features_kk_, inum_, n_des_);
+  Kokkos::realloc(d_anlm_r_, nlocal_, n_types_, n_fn_, n_lm_half_);
+  Kokkos::realloc(d_anlm_i_, nlocal_, n_types_, n_fn_, n_lm_half_);
+  Kokkos::realloc(d_anlm_, nlocal_, n_types_, n_fn_, n_lm_all_);
+  Kokkos::realloc(structural_features_kk_, nlocal_, n_des_);
 //  structural_features_kk_.sync_host();
-  Kokkos::realloc(d_polynomial_adjoints_, inum_, n_des_);
-  Kokkos::realloc(d_basis_function_adjoints_, inum_, n_typecomb_, n_fn_, n_lm_half_);
+  Kokkos::realloc(d_polynomial_adjoints_, nlocal_, n_des_);
+  Kokkos::realloc(d_basis_function_adjoints_, nlocal_, n_typecomb_, n_fn_, n_lm_half_);
 
-  Kokkos::realloc(site_energy_kk_, inum_);
+  Kokkos::realloc(site_energy_kk_, nlocal_);
 //  site_energy_kk_.sync_host();
-  Kokkos::realloc(forces_kk_, inum_, 3);
+  Kokkos::realloc(forces_kk_, nlocal_, 3);
 //  forces_kk_.sync_host();
 
   Kokkos::fence();
@@ -570,8 +578,8 @@ void MLIPModelLMP<PairStyle, NeighListKokkos>::get_forces(PairStyle *fpair) {
   auto h_neighbor_pair_index = neighbor_pair_index_kk_.view_host();
   for (NeighborPairIdx npidx = 0; npidx < n_pairs_; ++npidx) {
     const auto &ij = h_neighbor_pair_index(npidx);
-    const LocalIdx i = ij.first;
-    const LocalIdx j = ij.second;
+    const LMPLocalIdx i = ij.first;
+    const LMPLocalIdx j = ij.second;
     h_f(i, 0) = h_forces(i, 0);
     h_f(i, 1) = h_forces(i, 1);
     h_f(i, 2) = h_forces(i, 2);
