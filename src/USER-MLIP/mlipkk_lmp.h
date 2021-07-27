@@ -31,31 +31,37 @@ class MLIPModelLMP : public MLIPModel {
 
   void compute_order_parameters(NeighListKokkos *k_list);
   void compute_order_parameters(NeighFull neighflag, NewtonOff newton_pair, NeighListKokkos *k_list);
+  void compute_order_parameters(NeighFull neighflag, NewtonOn newton_pair, NeighListKokkos *k_list);
   void compute_order_parameters(NeighHalfThread neighflag, NewtonOn newton_pair, NeighListKokkos *k_list);
   void compute_order_parameters(NeighHalf neighflag, NewtonOn newton_pair, NeighListKokkos *k_list);
 
   void compute_structural_features(NeighListKokkos *k_list);
   void compute_structural_features(NeighFull neighflag, NewtonOff newton_pair, NeighListKokkos *k_list);
+  void compute_structural_features(NeighFull neighflag, NewtonOn newton_pair, NeighListKokkos *k_list);
   void compute_structural_features(NeighHalfThread neighflag, NewtonOn newton_pair, NeighListKokkos *k_list);
   void compute_structural_features(NeighHalf neighflag, NewtonOn newton_pair, NeighListKokkos *k_list);
 
   void compute_energy(NeighListKokkos *k_list);
   void compute_energy(NeighFull neighflag, NewtonOff newton_pair, NeighListKokkos *k_list);
+  void compute_energy(NeighFull neighflag, NewtonOn newton_pair, NeighListKokkos *k_list);
   void compute_energy(NeighHalfThread neighflag, NewtonOn newton_pair, NeighListKokkos *k_list);
   void compute_energy(NeighHalf neighflag, NewtonOn newton_pair, NeighListKokkos *k_list);
 
   void compute_polynomial_adjoints(NeighListKokkos *k_list);
   void compute_polynomial_adjoints(NeighFull neighflag, NewtonOff newton_pair, NeighListKokkos *k_list);
+  void compute_polynomial_adjoints(NeighFull neighflag, NewtonOn newton_pair, NeighListKokkos *k_list);
   void compute_polynomial_adjoints(NeighHalfThread neighflag, NewtonOn newton_pair, NeighListKokkos *k_list);
   void compute_polynomial_adjoints(NeighHalf neighflag, NewtonOn newton_pair, NeighListKokkos *k_list);
 
   void compute_basis_function_adjoints(NeighListKokkos *k_list);
   void compute_basis_function_adjoints(NeighFull neighflag, NewtonOff newton_pair, NeighListKokkos *k_list);
+  void compute_basis_function_adjoints(NeighFull neighflag, NewtonOn newton_pair, NeighListKokkos *k_list);
   void compute_basis_function_adjoints(NeighHalfThread neighflag, NewtonOn newton_pair, NeighListKokkos *k_list);
   void compute_basis_function_adjoints(NeighHalf neighflag, NewtonOn newton_pair, NeighListKokkos *k_list);
 
   void compute_forces_and_stress(NeighListKokkos *k_list);
   void compute_forces_and_stress(NeighFull neighflag, NewtonOff newton_pair, NeighListKokkos *k_list);
+  void compute_forces_and_stress(NeighFull neighflag, NewtonOn newton_pair, NeighListKokkos *k_list);
   void compute_forces_and_stress(NeighHalfThread neighflag, NewtonOn newton_pair, NeighListKokkos *k_list);
   void compute_forces_and_stress(NeighHalf neighflag, NewtonOn newton_pair, NeighListKokkos *k_list);
 
@@ -63,7 +69,7 @@ class MLIPModelLMP : public MLIPModel {
   void set_structure(PairStyle *fpair, NeighListKokkos* k_list);
 
   // defined here for LAMMPS interface
-  void get_forces(PairStyle *fpair);
+  void get_forces(PairStyle *fpair, NeighListKokkos *k_list);
 
  protected:
   /* Total number of owned and ghost atoms on this proc*/
@@ -142,7 +148,7 @@ void MLIPModelLMP<PairStyle, NeighListKokkos>::compute(NeighListKokkos *k_list) 
     end = std::chrono::system_clock::now();
 #endif
 
-  // compute_polynomial_adjoints();
+  MLIPModelLMP::compute_polynomial_adjoints(k_list);
 
 #ifdef _DEBUG
   time_pa += std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::system_clock::now() - end).count();
@@ -150,7 +156,7 @@ void MLIPModelLMP<PairStyle, NeighListKokkos>::compute(NeighListKokkos *k_list) 
     end = std::chrono::system_clock::now();
 #endif
 
-  // compute_basis_function_adjoints();
+  MLIPModelLMP::compute_basis_function_adjoints(k_list);
 
 #ifdef _DEBUG
   time_ba += std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::system_clock::now() - end).count();
@@ -158,7 +164,7 @@ void MLIPModelLMP<PairStyle, NeighListKokkos>::compute(NeighListKokkos *k_list) 
     end = std::chrono::system_clock::now();
 #endif
 
-  // compute_forces_and_stress();
+  MLIPModelLMP::compute_forces_and_stress(k_list);
 
 #ifdef _DEBUG
   time_acc += std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::system_clock::now() - end).count();
@@ -170,8 +176,10 @@ void MLIPModelLMP<PairStyle, NeighListKokkos>::compute(NeighListKokkos *k_list) 
 
 template<class PairStyle, class NeighListKokkos>
 void MLIPModelLMP<PairStyle, NeighListKokkos>::compute_order_parameters(NeighListKokkos *k_list) {
-  if (neighflag_ == FULL) {
+  if (neighflag_ == FULL && newton_pair_ == 0) {
     compute_order_parameters(neighfull_, newtonoff_, k_list);
+  } else if (neighflag_ == FULL && newton_pair_ == 1) {
+    compute_order_parameters(neighfull_, newtonon_, k_list);
   } else if (neighflag_ == HALF) {
     compute_order_parameters(neighhalf_, newtonon_, k_list);
   } else if (neighflag_ == HALFTHREAD) {
@@ -181,8 +189,10 @@ void MLIPModelLMP<PairStyle, NeighListKokkos>::compute_order_parameters(NeighLis
 
 template<class PairStyle, class NeighListKokkos>
 void MLIPModelLMP<PairStyle, NeighListKokkos>::compute_structural_features(NeighListKokkos *k_list) {
-  if (neighflag_ == FULL) {
+  if (neighflag_ == FULL && newton_pair_ == 0) {
     compute_structural_features(neighfull_, newtonoff_, k_list);
+  } else if (neighflag_ == FULL && newton_pair_ == 1) {
+    compute_structural_features(neighfull_, newtonon_, k_list);
   } else if (neighflag_ == HALF) {
     compute_structural_features(neighhalf_, newtonon_, k_list);
   } else if (neighflag_ == HALFTHREAD) {
@@ -192,8 +202,10 @@ void MLIPModelLMP<PairStyle, NeighListKokkos>::compute_structural_features(Neigh
 
 template<class PairStyle, class NeighListKokkos>
 void MLIPModelLMP<PairStyle, NeighListKokkos>::compute_energy(NeighListKokkos *k_list) {
-  if (neighflag_ == FULL) {
+  if (neighflag_ == FULL && newton_pair_ == 0) {
     compute_energy(neighfull_, newtonoff_, k_list);
+  } else if (neighflag_ == FULL && newton_pair_ == 1) {
+    compute_energy(neighfull_, newtonon_, k_list);
   } else if (neighflag_ == HALF) {
     compute_energy(neighhalf_, newtonon_, k_list);
   } else if (neighflag_ == HALFTHREAD) {
@@ -203,8 +215,10 @@ void MLIPModelLMP<PairStyle, NeighListKokkos>::compute_energy(NeighListKokkos *k
 
 template<class PairStyle, class NeighListKokkos>
 void MLIPModelLMP<PairStyle, NeighListKokkos>::compute_polynomial_adjoints(NeighListKokkos *k_list) {
-  if (neighflag_ == FULL) {
+  if (neighflag_ == FULL && newton_pair_ == 0) {
     compute_polynomial_adjoints(neighfull_, newtonoff_, k_list);
+  } else if (neighflag_ == FULL && newton_pair_ == 1) {
+    compute_polynomial_adjoints(neighfull_, newtonon_, k_list);
   } else if (neighflag_ == HALF) {
     compute_polynomial_adjoints(neighhalf_, newtonon_, k_list);
   } else if (neighflag_ == HALFTHREAD) {
@@ -214,8 +228,10 @@ void MLIPModelLMP<PairStyle, NeighListKokkos>::compute_polynomial_adjoints(Neigh
 
 template<class PairStyle, class NeighListKokkos>
 void MLIPModelLMP<PairStyle, NeighListKokkos>::compute_basis_function_adjoints(NeighListKokkos *k_list) {
-  if (neighflag_ == FULL) {
+  if (neighflag_ == FULL && newton_pair_ == 0) {
     compute_basis_function_adjoints(neighfull_, newtonoff_, k_list);
+  } else if (neighflag_ == FULL && newton_pair_ == 1) {
+    compute_basis_function_adjoints(neighfull_, newtonon_, k_list);
   } else if (neighflag_ == HALF) {
     compute_basis_function_adjoints(neighhalf_, newtonon_, k_list);
   } else if (neighflag_ == HALFTHREAD) {
@@ -225,8 +241,10 @@ void MLIPModelLMP<PairStyle, NeighListKokkos>::compute_basis_function_adjoints(N
 
 template<class PairStyle, class NeighListKokkos>
 void MLIPModelLMP<PairStyle, NeighListKokkos>::compute_forces_and_stress(NeighListKokkos *k_list) {
-  if (neighflag_ == FULL) {
+  if (neighflag_ == FULL && newton_pair_ == 0) {
     compute_forces_and_stress(neighfull_, newtonoff_, k_list);
+  } else if (neighflag_ == FULL && newton_pair_ == 1) {
+    compute_forces_and_stress(neighfull_, newtonon_, k_list);
   } else if (neighflag_ == HALF) {
     compute_forces_and_stress(neighhalf_, newtonon_, k_list);
   } else if (neighflag_ == HALFTHREAD) {
@@ -235,7 +253,7 @@ void MLIPModelLMP<PairStyle, NeighListKokkos>::compute_forces_and_stress(NeighLi
 }
 
 template<class PairStyle, class NeighListKokkos>
-void MLIPModelLMP<PairStyle, NeighListKokkos>::compute_order_parameters(NeighFull neighflag, NewtonOff newton_pair, NeighListKokkos *k_list) {
+void MLIPModelLMP<PairStyle, NeighListKokkos>::compute_order_parameters(NeighFull neighflag, NewtonOn newton_pair, NeighListKokkos *k_list) {
   Kokkos::parallel_for("init_anlm_full",
                        Kokkos::MDRangePolicy<ExecSpace, Kokkos::Rank<4>>({0, 0, 0, 0}, {nlocal_, n_types_, n_fn_, n_lm_half_}),
                        KOKKOS_CLASS_LAMBDA(const LMPLocalIdx i, const ElementType type, const int n, const LMInfoIdx lmi) {
@@ -299,6 +317,13 @@ void MLIPModelLMP<PairStyle, NeighListKokkos>::compute_order_parameters(NeighFul
 }
 
 template<class PairStyle, class NeighListKokkos>
+void MLIPModelLMP<PairStyle, NeighListKokkos>::compute_order_parameters(NeighFull neighflag,
+                                                                        NewtonOff newton_pair,
+                                                                        NeighListKokkos *k_list) {
+  ;  // do nothing
+}
+
+template<class PairStyle, class NeighListKokkos>
 void MLIPModelLMP<PairStyle, NeighListKokkos>::compute_order_parameters(NeighHalfThread neighflag,
                                                                         NewtonOn newton_pair,
                                                                         NeighListKokkos *k_list) {
@@ -313,7 +338,7 @@ void MLIPModelLMP<PairStyle, NeighListKokkos>::compute_order_parameters(NeighHal
 }
 
 template<class PairStyle, class NeighListKokkos>
-void MLIPModelLMP<PairStyle, NeighListKokkos>::compute_structural_features(NeighFull neighflag, NewtonOff newton_pair, NeighListKokkos *k_list) {
+void MLIPModelLMP<PairStyle, NeighListKokkos>::compute_structural_features(NeighFull neighflag, NewtonOn newton_pair, NeighListKokkos *k_list) {
   const auto d_types = types_kk_.view_device();
   const auto d_other_type = other_type_kk_.view_device();
   const auto d_irreps_type_intersection = irreps_type_intersection_.view_device();
@@ -371,6 +396,13 @@ void MLIPModelLMP<PairStyle, NeighListKokkos>::compute_structural_features(Neigh
 }
 
 template<class PairStyle, class NeighListKokkos>
+void MLIPModelLMP<PairStyle, NeighListKokkos>::compute_structural_features(NeighFull neighflag,
+                                                                           NewtonOff newton_pair,
+                                                                           NeighListKokkos *k_list) {
+  ;  // do nothing
+}
+
+template<class PairStyle, class NeighListKokkos>
 void MLIPModelLMP<PairStyle, NeighListKokkos>::compute_structural_features(NeighHalfThread neighflag,
                                                                            NewtonOn newton_pair,
                                                                            NeighListKokkos *k_list) {
@@ -385,7 +417,7 @@ void MLIPModelLMP<PairStyle, NeighListKokkos>::compute_structural_features(Neigh
 }
 
 template<class PairStyle, class NeighListKokkos>
-void MLIPModelLMP<PairStyle, NeighListKokkos>::compute_energy(NeighFull neighflag, NewtonOff newton_pair, NeighListKokkos *k_list) {
+void MLIPModelLMP<PairStyle, NeighListKokkos>::compute_energy(NeighFull neighflag, NewtonOn newton_pair, NeighListKokkos *k_list) {
   const int num_poly_idx = n_reg_coeffs_;
   auto d_site_energy = site_energy_kk_.view_device();
   auto d_ilist = k_list->d_ilist;
@@ -437,6 +469,13 @@ void MLIPModelLMP<PairStyle, NeighListKokkos>::compute_energy(NeighFull neighfla
 }
 
 template<class PairStyle, class NeighListKokkos>
+void MLIPModelLMP<PairStyle, NeighListKokkos>::compute_energy(NeighFull neighflag,
+                                                              NewtonOff newton_pair,
+                                                              NeighListKokkos *k_list) {
+  ;  // do nothing
+}
+
+template<class PairStyle, class NeighListKokkos>
 void MLIPModelLMP<PairStyle, NeighListKokkos>::compute_energy(NeighHalfThread neighflag,
                                                               NewtonOn newton_pair,
                                                               NeighListKokkos *k_list) {
@@ -452,7 +491,7 @@ void MLIPModelLMP<PairStyle, NeighListKokkos>::compute_energy(NeighHalf neighfla
 
 template<class PairStyle, class NeighListKokkos>
 void MLIPModelLMP<PairStyle, NeighListKokkos>::compute_polynomial_adjoints(NeighFull neighflag,
-                                                                           NewtonOff newton_pair,
+                                                                           NewtonOn newton_pair,
                                                                            NeighListKokkos *k_list) {
   const int num_poly_idx = n_reg_coeffs_;
 
@@ -460,9 +499,11 @@ void MLIPModelLMP<PairStyle, NeighListKokkos>::compute_polynomial_adjoints(Neigh
   const auto d_structural_features = structural_features_kk_.view_device();
   sview_2d sd_polynomial_adjoints(d_polynomial_adjoints_);
 
+  const auto d_ilist = k_list->d_ilist;
+
   Kokkos::parallel_for("init_polynomial_adjoints",
-                       Kokkos::MDRangePolicy<ExecSpace, Kokkos::Rank<2>>({0, 0}, {inum_, n_des_}),
-                       KOKKOS_CLASS_LAMBDA(const SiteIdx i, const FeatureIdx fidx) {
+                       Kokkos::MDRangePolicy<ExecSpace, Kokkos::Rank<2>>({0, 0}, {nlocal_, n_des_}),
+                       KOKKOS_CLASS_LAMBDA(const LMPLocalIdx i, const FeatureIdx fidx) {
                          d_polynomial_adjoints_(i, fidx) = 0.0;
                        }
   );
@@ -475,7 +516,8 @@ void MLIPModelLMP<PairStyle, NeighListKokkos>::compute_polynomial_adjoints(Neigh
   Kokkos::parallel_for("polynomial_adjoints",
                        team_policy(inum_, Kokkos::AUTO).set_scratch_size(scratch_level, Kokkos::PerTeam(scratch_bytes)),
                        KOKKOS_CLASS_LAMBDA(const team_policy::member_type &teamMember) {
-                         const SiteIdx i = teamMember.league_rank();
+                         const SiteIdx ii = teamMember.league_rank();
+                         const LMPLocalIdx i = d_ilist(ii);
 
                          // load into scratch
                          const ScratchPadView d_structural_features_i(teamMember.team_scratch(scratch_level), n_des_);
@@ -515,6 +557,13 @@ void MLIPModelLMP<PairStyle, NeighListKokkos>::compute_polynomial_adjoints(Neigh
 }
 
 template<class PairStyle, class NeighListKokkos>
+void MLIPModelLMP<PairStyle, NeighListKokkos>::compute_polynomial_adjoints(NeighFull neighflag,
+                                                                           NewtonOff newton_pair,
+                                                                           NeighListKokkos *k_list) {
+  ;  // do nothing
+}
+
+template<class PairStyle, class NeighListKokkos>
 void MLIPModelLMP<PairStyle, NeighListKokkos>::compute_polynomial_adjoints(NeighHalfThread neighflag,
                                                                            NewtonOn newton_pair,
                                                                            NeighListKokkos *k_list) {
@@ -530,7 +579,7 @@ void MLIPModelLMP<PairStyle, NeighListKokkos>::compute_polynomial_adjoints(Neigh
 
 template<class PairStyle, class NeighListKokkos>
 void MLIPModelLMP<PairStyle, NeighListKokkos>::compute_basis_function_adjoints(NeighFull neighflag,
-                                                                               NewtonOff newton_pair,
+                                                                               NewtonOn newton_pair,
                                                                                NeighListKokkos *k_list) {
   const auto d_types = types_kk_.view_device();
   const auto d_other_type = other_type_kk_.view_device();
@@ -542,18 +591,20 @@ void MLIPModelLMP<PairStyle, NeighListKokkos>::compute_basis_function_adjoints(N
   const auto d_lm2l = lm2l_.view_device();
   const auto d_lm2m = lm2m_.view_device();
   sview_4dc s_basis_function_adjoints(d_basis_function_adjoints_);
+  const auto d_ilist = k_list->d_ilist;
 
   Kokkos::parallel_for("init_basis_function_adjoints",
                        Kokkos::MDRangePolicy<ExecSpace, Kokkos::Rank<4>>({0, 0, 0, 0},
-                                                                         {inum_, n_typecomb_, n_fn_, n_lm_half_}),
-                       KOKKOS_CLASS_LAMBDA(const SiteIdx i, const TypeCombIdx tcidx, const int n, const LMInfoIdx lmi) {
+                                                                         {nlocal_, n_typecomb_, n_fn_, n_lm_half_}),
+                       KOKKOS_CLASS_LAMBDA(const LMPLocalIdx i, const TypeCombIdx tcidx, const int n, const LMInfoIdx lmi) {
                          d_basis_function_adjoints_(i, tcidx, n, lmi) = 0.0;
                        }
   );
 
   Kokkos::parallel_for("basis_function_adjoints",
                        Kokkos::MDRangePolicy<ExecSpace, Kokkos::Rank<3>>({0, 0, 0}, {inum_, n_irreps_typecomb_, n_fn_}),
-                       KOKKOS_CLASS_LAMBDA(const SiteIdx i, const IrrepsTypeCombIdx itcidx, const int n) {
+                       KOKKOS_CLASS_LAMBDA(const SiteIdx ii, const IrrepsTypeCombIdx itcidx, const int n) {
+                         const LMPLocalIdx i = d_ilist(ii);
                          const ElementType type_i = d_types(i);
                          if (!d_irreps_type_intersection(itcidx, type_i)) {
                            // not related type
@@ -607,6 +658,13 @@ void MLIPModelLMP<PairStyle, NeighListKokkos>::compute_basis_function_adjoints(N
 }
 
 template<class PairStyle, class NeighListKokkos>
+void MLIPModelLMP<PairStyle, NeighListKokkos>::compute_basis_function_adjoints(NeighFull neighflag,
+                                                                               NewtonOff newton_pair,
+                                                                               NeighListKokkos *k_list) {
+  ;  // do nothing
+}
+
+template<class PairStyle, class NeighListKokkos>
 void MLIPModelLMP<PairStyle, NeighListKokkos>::compute_basis_function_adjoints(NeighHalfThread neighflag,
                                                                                NewtonOn newton_pair,
                                                                                NeighListKokkos *k_list) {
@@ -622,14 +680,14 @@ void MLIPModelLMP<PairStyle, NeighListKokkos>::compute_basis_function_adjoints(N
 
 template<class PairStyle, class NeighListKokkos>
 void MLIPModelLMP<PairStyle, NeighListKokkos>::compute_forces_and_stress(NeighFull neighflag,
-                                                                         NewtonOff newton_pair,
+                                                                         NewtonOn newton_pair,
                                                                          NeighListKokkos *k_list) {
   auto d_forces = forces_kk_.view_device();
   auto d_stress = stress_kk_.view_device();
 
   // initialize
   Kokkos::parallel_for("init_forces",
-                       Kokkos::MDRangePolicy<Kokkos::Rank<2>>({0, 0}, {inum_, 3}),
+                       Kokkos::MDRangePolicy<Kokkos::Rank<2>>({0, 0}, {nlocal_, 3}),
                        KOKKOS_LAMBDA(const SiteIdx i, const int x) {
                          d_forces(i, x) = 0.0;
                        }
@@ -667,8 +725,8 @@ void MLIPModelLMP<PairStyle, NeighListKokkos>::compute_forces_and_stress(NeighFu
                          const double delz_invdis = delz * invdis;
 
                          const auto &ij = d_neighbor_pair_index(npidx);
-                         const SiteIdx i = ij.first;
-                         const SiteIdx j = ij.second;
+                         const LMPLocalIdx i = ij.first;
+                         const LMPLocalIdx j = ij.second;
 
                          // forces acted on i from j minus forces acted on j from i
                          double fx = 0.0;
@@ -676,38 +734,62 @@ void MLIPModelLMP<PairStyle, NeighListKokkos>::compute_forces_and_stress(NeighFu
                          double fz = 0.0;
                          const TypeCombIdx tc_ij = d_neighbor_pair_typecomb(npidx);
 
-                         for (int n = 0; n < n_fn_; ++n) {
-                           for (LMInfoIdx lmi = 0; lmi < n_lm_half_; ++lmi) {
-                             const int m = d_lm_info(lmi, 1);
-                             const double coeff = (m == 0) ? 1.0 : 2.0;
+                         if (j < nlocal_ && j < i) {
+                           for (int n = 0; n < n_fn_; ++n) {
+                             for (LMInfoIdx lmi = 0; lmi < n_lm_half_; ++lmi) {
+                               const int m = d_lm_info(lmi, 1);
+                               const double coeff = (m == 0) ? 1.0 : 2.0;
 
-                             const auto f1 = d_fn_der_(npidx, n) * d_ylm_(npidx, lmi);
-                             auto basis_function_dx = f1 * delx_invdis + d_fn_(npidx, n) * d_ylm_dx_(npidx, lmi);
-                             auto basis_function_dy = f1 * dely_invdis + d_fn_(npidx, n) * d_ylm_dy_(npidx, lmi);
-                             auto basis_function_dz = f1 * delz_invdis + d_fn_(npidx, n) * d_ylm_dz_(npidx, lmi);
-                             basis_function_dx.imag() *= -1;
-                             basis_function_dy.imag() *= -1;
-                             basis_function_dz.imag() *= -1;
+                               const auto f1 = d_fn_der_(npidx, n) * d_ylm_(npidx, lmi);
+                               auto basis_function_dx = f1 * delx_invdis + d_fn_(npidx, n) * d_ylm_dx_(npidx, lmi);
+                               auto basis_function_dy = f1 * dely_invdis + d_fn_(npidx, n) * d_ylm_dy_(npidx, lmi);
+                               auto basis_function_dz = f1 * delz_invdis + d_fn_(npidx, n) * d_ylm_dz_(npidx, lmi);
+                               basis_function_dx.imag() *= -1;
+                               basis_function_dy.imag() *= -1;
+                               basis_function_dz.imag() *= -1;
 
-                             fx += coeff * product_real_part(d_basis_function_adjoints_(i, tc_ij, n, lmi),
-                                                             basis_function_dx);
-                             fy += coeff * product_real_part(d_basis_function_adjoints_(i, tc_ij, n, lmi),
-                                                             basis_function_dy);
-                             fz += coeff * product_real_part(d_basis_function_adjoints_(i, tc_ij, n, lmi),
-                                                             basis_function_dz);
+                               fx += coeff * product_real_part(d_basis_function_adjoints_(i, tc_ij, n, lmi),
+                                                               basis_function_dx);
+                               fy += coeff * product_real_part(d_basis_function_adjoints_(i, tc_ij, n, lmi),
+                                                               basis_function_dy);
+                               fz += coeff * product_real_part(d_basis_function_adjoints_(i, tc_ij, n, lmi),
+                                                               basis_function_dz);
 
-                             // sign for parity of spherical harmonics, (-1)^l
-                             const int l = d_lm_info(lmi, 0);
-                             const double scale = (l % 2) ? -1.0 : 1.0;
-                             fx += coeff * scale * product_real_part(d_basis_function_adjoints_(j, tc_ij, n, lmi),
-                                                                     basis_function_dx);
-                             fy += coeff * scale * product_real_part(d_basis_function_adjoints_(j, tc_ij, n, lmi),
-                                                                     basis_function_dy);
-                             fz += coeff * scale * product_real_part(d_basis_function_adjoints_(j, tc_ij, n, lmi),
-                                                                     basis_function_dz);
+                               // sign for parity of spherical harmonics, (-1)^l
+                               const int l = d_lm_info(lmi, 0);
+                               const double scale = (l % 2) ? -1.0 : 1.0;
+                               fx += coeff * scale * product_real_part(d_basis_function_adjoints_(j, tc_ij, n, lmi),
+                                                                       basis_function_dx);
+                               fy += coeff * scale * product_real_part(d_basis_function_adjoints_(j, tc_ij, n, lmi),
+                                                                       basis_function_dy);
+                               fz += coeff * scale * product_real_part(d_basis_function_adjoints_(j, tc_ij, n, lmi),
+                                                                       basis_function_dz);
+                             }
                            }
                          }
+                         if (j >= nlocal_) {
+                           for (int n = 0; n < n_fn_; ++n) {
+                             for (LMInfoIdx lmi = 0; lmi < n_lm_half_; ++lmi) {
+                               const int m = d_lm_info(lmi, 1);
+                               const double coeff = (m == 0) ? 1.0 : 2.0;
 
+                               const auto f1 = d_fn_der_(npidx, n) * d_ylm_(npidx, lmi);
+                               auto basis_function_dx = f1 * delx_invdis + d_fn_(npidx, n) * d_ylm_dx_(npidx, lmi);
+                               auto basis_function_dy = f1 * dely_invdis + d_fn_(npidx, n) * d_ylm_dy_(npidx, lmi);
+                               auto basis_function_dz = f1 * delz_invdis + d_fn_(npidx, n) * d_ylm_dz_(npidx, lmi);
+                               basis_function_dx.imag() *= -1;
+                               basis_function_dy.imag() *= -1;
+                               basis_function_dz.imag() *= -1;
+
+                               fx += coeff * product_real_part(d_basis_function_adjoints_(i, tc_ij, n, lmi),
+                                                               basis_function_dx);
+                               fy += coeff * product_real_part(d_basis_function_adjoints_(i, tc_ij, n, lmi),
+                                                               basis_function_dy);
+                               fz += coeff * product_real_part(d_basis_function_adjoints_(i, tc_ij, n, lmi),
+                                                               basis_function_dz);
+                             }
+                           }
+                         }
                          // update forces
                          auto sd_forces_a = sd_forces.access();
                          sd_forces_a(i, 0) += fx;
@@ -735,6 +817,13 @@ void MLIPModelLMP<PairStyle, NeighListKokkos>::compute_forces_and_stress(NeighFu
 }
 
 template<class PairStyle, class NeighListKokkos>
+void MLIPModelLMP<PairStyle, NeighListKokkos>::compute_forces_and_stress(NeighFull neighflag,
+                                                                         NewtonOff newton_pair,
+                                                                         NeighListKokkos *k_list) {
+  ;  // do nothing
+}
+
+template<class PairStyle, class NeighListKokkos>
 void MLIPModelLMP<PairStyle, NeighListKokkos>::compute_forces_and_stress(NeighHalfThread neighflag,
                                                                          NewtonOn newton_pair,
                                                                          NeighListKokkos *k_list) {
@@ -746,6 +835,15 @@ void MLIPModelLMP<PairStyle, NeighListKokkos>::compute_forces_and_stress(NeighHa
                                                                          NewtonOn newton_pair,
                                                                          NeighListKokkos *k_list) {
   MLIPModel::compute_forces_and_stress();
+}
+
+// ----------------------------------------------------------------------------
+// Inline functions
+// ----------------------------------------------------------------------------
+
+KOKKOS_INLINE_FUNCTION
+double MLIPModel::product_real_part(const Kokkos::complex<double> &lhs, const Kokkos::complex<double> &rhs) const {
+  return lhs.real() * rhs.real() - lhs.imag() * rhs.imag();
 }
 
 }  // MLIP_NS

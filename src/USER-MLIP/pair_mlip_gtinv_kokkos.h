@@ -98,7 +98,7 @@ class PairMLIPGtinvKokkos : public PairMLIPGtinv {
       NeighListKokkos<DeviceType> *k_list);
   friend void pair_virial_fdotr_compute<PairMLIPGtinvKokkos>(PairMLIPGtinvKokkos *);
   friend void MLIP_NS::MLIPModelLMP<PairMLIPGtinvKokkos<DeviceType>, NeighListKokkos<DeviceType>>::get_forces(
-      PairMLIPGtinvKokkos<DeviceType> *fpair);
+      PairMLIPGtinvKokkos<DeviceType> *fpair, NeighListKokkos<DeviceType> *k_list);
 };
 } // namespace LAMMPS
 

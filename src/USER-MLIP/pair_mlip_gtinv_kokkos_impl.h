@@ -228,28 +228,29 @@ void PairMLIPGtinvKokkos<DeviceType>::init_style() {
   if (nprocs==1){  // Without MPI
     if (neighflag == FULL) {  // neigh full
       if (newton_pair == 0) {  // newton off
+        error->all(FLERR, "Must use 'neigh half newton on' or 'neigh full newton on' with mlip_gtinv/kk");
+      } else {  // newton on
         neighbor->requests[irequest]->full = 1;
         neighbor->requests[irequest]->half = 0;
-      } else {  // newton on
-        error->all(FLERR, "Must use 'neigh half newton on' or 'neigh full newton off' with mlip_gtinv/kk");
       }
     } else if (neighflag == HALF || neighflag == HALFTHREAD) {  // neigh half
       if (newton_pair == 0) {  // newton off
-        error->all(FLERR, "Must use 'neigh half newton on' or 'neigh full newton off' with mlip_gtinv/kk");
+        error->all(FLERR, "Must use 'neigh half newton on' or 'neigh full newton on' with mlip_gtinv/kk");
       } else {  // newton on
         neighbor->requests[irequest]->full = 0;
         neighbor->requests[irequest]->half = 1;
       }
     } else {
-      error->all(FLERR, "Must use 'neigh half newton on' or 'neigh full newton off' with mlip_gtinv/kk");
+      error->all(FLERR, "Must use 'neigh half newton on' or 'neigh full newton on' with mlip_gtinv/kk");
     }
   } else {  // With MPI
     if (neighflag == FULL) {  // neigh full
       if (newton_pair == 0) {  // newton off
+        error->all(FLERR, "Must use 'neigh half newton on' or 'neigh full newton on' with mlip_gtinv/kk");
+      } else {  // newton on
         neighbor->requests[irequest]->full = 1;
         neighbor->requests[irequest]->half = 0;
-      } else {  // newton on
-        error->all(FLERR, "Cannot (yet) use 'neigh full newton on' with MPI parallelization for mlip_gtinv/kk");
+        // error->all(FLERR, "Cannot (yet) use 'neigh full newton on' with MPI parallelization for mlip_gtinv/kk");
       }
     } else if (neighflag == HALF || neighflag == HALFTHREAD) {  // neigh half
       error->all(FLERR, "Cannot (yet) use neigh half with MPI parallelization for mlip_gtinv/kk");
@@ -328,7 +329,7 @@ void PairMLIPGtinvKokkos<DeviceType>::compute(int eflag_in, int vflag_in) {
 
   model->set_structure(this, k_list);
   model->compute(k_list);
-  // model->get_forces<PairMLIPGtinvKokkos<DeviceType>>(this);
+  model->get_forces(this, k_list);
 
   // From pair_eam_alloy_kokkos.cpp
   // https://github.com/lammps/lammps/blob/998b76520e74b3a90580bf1a92155dcbe2843dba/src/KOKKOS/pair_eam_alloy_kokkos.cpp#L251-L252
@@ -563,32 +564,43 @@ void MLIPModelLMP<PairStyle, NeighListKokkos>::set_structure(PairStyle *fpair, N
 
   Kokkos::realloc(site_energy_kk_, nlocal_);
 //  site_energy_kk_.sync_host();
-  Kokkos::realloc(forces_kk_, nlocal_, 3);
+  if (fpair->neighflag == FULL) {
+    Kokkos::realloc(forces_kk_, nall_, 3);
+  } else {
+    Kokkos::realloc(forces_kk_, nlocal_, 3);
+  }
 //  forces_kk_.sync_host();
 
   Kokkos::fence();
 }
 
 template<class PairStyle, class NeighListKokkos>
-void MLIPModelLMP<PairStyle, NeighListKokkos>::get_forces(PairStyle *fpair) {
+void MLIPModelLMP<PairStyle, NeighListKokkos>::get_forces(PairStyle *fpair, NeighListKokkos *k_list) {
   forces_kk_.sync_host();
   fpair->atomKK->k_f.sync_host();
   const auto h_forces = forces_kk_.view_host();
   auto h_f = fpair->atomKK->k_f.view_host();
-  auto h_neighbor_pair_index = neighbor_pair_index_kk_.view_host();
-  for (NeighborPairIdx npidx = 0; npidx < n_pairs_; ++npidx) {
-    const auto &ij = h_neighbor_pair_index(npidx);
-    const LMPLocalIdx i = ij.first;
-    const LMPLocalIdx j = ij.second;
-    h_f(i, 0) = h_forces(i, 0);
-    h_f(i, 1) = h_forces(i, 1);
-    h_f(i, 2) = h_forces(i, 2);
-    h_f(j, 0) = h_forces(j, 0);
-    h_f(j, 1) = h_forces(j, 1);
-    h_f(j, 2) = h_forces(j, 2);
+  auto h_ilist = k_list->k_ilist.template view<LMPHostType>();
+  if (fpair->neighflag == FULL) {
+    for (LMPLocalIdx i = 0; i < nall_; ++i) {
+      h_f(i, 0) += h_forces(i, 0);
+      h_f(i, 1) += h_forces(i, 1);
+      h_f(i, 2) += h_forces(i, 2);
+    }
+  } else {
+    fpair->atomKK->k_tag.sync_host();
+    auto h_tag = fpair->atomKK->k_tag.view_host();
+    for (int ii = 0; ii < inum_; ++ii) {
+      const LMPLocalIdx i = h_ilist(ii);
+      const LMPAtomID site_i = h_tag(i) - 1;
+      h_f(i, 0) = h_forces(site_i, 0);
+      h_f(i, 1) = h_forces(site_i, 1);
+      h_f(i, 2) = h_forces(site_i, 2);
+    }
   }
   fpair->atomKK->k_f.modify_host();
   fpair->atomKK->k_f.sync_device();
+  fpair->atomKK->k_f.modify_device();
   Kokkos::fence();
 }
 
