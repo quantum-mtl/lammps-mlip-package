@@ -578,6 +578,7 @@ template<class PairStyle, class NeighListKokkos>
 void MLIPModelLMP<PairStyle, NeighListKokkos>::get_forces(PairStyle *fpair, NeighListKokkos *k_list) {
   forces_kk_.sync_host();
   fpair->atomKK->k_f.sync_host();
+  k_list->k_ilist.sync_host();
   const auto h_forces = forces_kk_.view_host();
   auto h_f = fpair->atomKK->k_f.view_host();
   auto h_ilist = k_list->k_ilist.template view<LMPHostType>();
