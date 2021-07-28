@@ -38,7 +38,7 @@ PairMLIPGtinvKokkos<DeviceType>::PairMLIPGtinvKokkos(LAMMPS *lmp) : PairMLIPGtin
   Pair::respa_enable = 0;
   Pair::one_coeff = 1;
   Pair::manybody_flag = 1;
-  // Pair::kokkosable = 1;  // is not exist in stable.
+  // Pair::kokkosable = 1;  // is not exist in "stable 29 Oct 2020".
 
   Pointers::atomKK = (AtomKokkos *) atom;
   Pair::execution_space = ExecutionSpaceFromDevice<DeviceType>::space;
@@ -85,7 +85,6 @@ void PairMLIPGtinvKokkos<DeviceType>::settings(int narg, char **arg){
 
 template<class DeviceType>
 void PairMLIPGtinvKokkos<DeviceType>::coeff(int narg, char **arg) {
-  // Do not call the FU**ING parent class's coeff()
   // TODO implement on Device
   // reference(stable) PairEAMAlloyKokkos
   // https://github.com/lammps/lammps/blob/584943fc928351bc29f41a132aee3586e0a2286a/src/KOKKOS/pair_eam_alloy_kokkos.cpp#L912
@@ -99,9 +98,10 @@ void PairMLIPGtinvKokkos<DeviceType>::coeff(int narg, char **arg) {
   if (strcmp(arg[0],"*") != 0 || strcmp(arg[1],"*") != 0)
     error->all(FLERR,"Incorrect args for pair coefficients");
 
-  // Read potential file and initialize MLIPModel.
-  // To avoid, delete them if exist.
   {
+    // Read potential file and initialize MLIPModel.
+    // To avoid multiple instantiation, delete them if exist.
+
     // read parameter file
     if (fp) {
       delete fp;
@@ -119,10 +119,10 @@ void PairMLIPGtinvKokkos<DeviceType>::coeff(int narg, char **arg) {
     model->initialize(*fp, reg_coeffs, gtinvdata, this);
   }
 
-  // https://github.com/lammps/lammps/blob/584943fc928351bc29f41a132aee3586e0a2286a/src/KOKKOS/pair_eam_alloy_kokkos.cpp#L940-L952
-  // read args that map atom types to elements in potential file
-  // map[i] = which element the Ith atom type is, -1 if "NULL"
   {
+    // https://github.com/lammps/lammps/blob/584943fc928351bc29f41a132aee3586e0a2286a/src/KOKKOS/pair_eam_alloy_kokkos.cpp#L940-L952
+    // read args that map atom types to elements in potential file
+    // map[i] = which element the Ith atom type is, -1 if "NULL"
     int i, j;
     for (i = 3; i < narg; i++) {
       if (strcmp(arg[i], "NULL") == 0) {
@@ -136,9 +136,9 @@ void PairMLIPGtinvKokkos<DeviceType>::coeff(int narg, char **arg) {
     }
   }
 
-  // https://github.com/lammps/lammps/blob/584943fc928351bc29f41a132aee3586e0a2286a/src/KOKKOS/pair_eam_alloy_kokkos.cpp#L954-L959
-  // clear setflag since coeff() called once with I,J = * *
   {
+    // https://github.com/lammps/lammps/blob/584943fc928351bc29f41a132aee3586e0a2286a/src/KOKKOS/pair_eam_alloy_kokkos.cpp#L954-L959
+    // clear setflag since coeff() called once with I,J = * *
     MLIP_NS::ElementType i, j;
     MLIP_NS::ElementType n = atom->ntypes;
     for (i = 1; i <= n; i++)
@@ -146,10 +146,10 @@ void PairMLIPGtinvKokkos<DeviceType>::coeff(int narg, char **arg) {
         Pair::setflag[i][j] = 0;
   }
 
-  // https://github.com/lammps/lammps/blob/584943fc928351bc29f41a132aee3586e0a2286a/src/KOKKOS/pair_eam_alloy_kokkos.cpp#L961-L975
-  // set setflag i,j for type pairs where both are mapped to elements
-  // set mass of atom type if i = j
   {
+    // https://github.com/lammps/lammps/blob/584943fc928351bc29f41a132aee3586e0a2286a/src/KOKKOS/pair_eam_alloy_kokkos.cpp#L961-L975
+    // set setflag i,j for type pairs where both are mapped to elements
+    // set mass of atom type if i = j
     int count = 0;
     MLIP_NS::ElementType i, j;
     MLIP_NS::ElementType n = atom->ntypes;
@@ -165,9 +165,9 @@ void PairMLIPGtinvKokkos<DeviceType>::coeff(int narg, char **arg) {
     if (count == 0) error->all(FLERR, "Incorrect args for pair coefficients");
   }
 
-  // copy LAMMPS_NS::Atom::type to LAMMPS_NS::PairMLIPGtinv::types
-  // map[i] starts from i=1
   {
+    // copy LAMMPS_NS::Atom::type to LAMMPS_NS::PairMLIPGtinv::types
+    // map[i] starts from i=1
     MLIP_NS::SiteIdx i;
     MLIP_NS::SiteIdx n = atom->natoms;
     if (!types.empty()) {
@@ -191,9 +191,6 @@ template<class DeviceType>
 void PairMLIPGtinvKokkos<DeviceType>::allocate() {
   PairMLIPGtinv::allocate();
   map.resize(atom->ntypes + 1);
-  //TODO: implement d_map to execute coeff() on Device
-  // int n = atom->ntypes;
-  // d_map = Kokkos::View<T_INT*, DeviceType>("PairSNAPKokkos::map",n+1);
 }
 
 template<class DeviceType>
@@ -202,9 +199,10 @@ void PairMLIPGtinvKokkos<DeviceType>::init_style() {
   // https://github.com/lammps/lammps/blob/584943fc928351bc29f41a132aee3586e0a2286a/src/MANYBODY/pair_tersoff.cpp#L366
   if (atom->tag_enable == 0)
     error->all(FLERR,"Pair style mlip_gtinv requires atom IDs");
-  // if (force->newton_pair == 0) {
-  //   error->all(FLERR, "Pair style mlip_gtinv requires newton pair on");
-  // }
+  // This newton-on check will be deleted when derivatives of site-energy are communicated in `compute()`.
+  if (force->newton_pair == 0) {
+    error->all(FLERR, "Pair style mlip_gtinv requires newton pair on");
+  }
 
   Pair::init_style(); // just request neighbor
 
@@ -220,8 +218,8 @@ void PairMLIPGtinvKokkos<DeviceType>::init_style() {
       kokkos_device = std::is_same<DeviceType, LMPDeviceType>::value;
 
   // Check flags:
-  // Only 'neigh full newton off' is allowed for MPI parallelization.
-  // Without MPI parallelization, 'neigh full newton off' and 'neigh half newton on' are allowed.
+  // Only 'neigh full newton on' is allowed for MPI parallelization.
+  // Without MPI parallelization, 'neigh full newton on' and 'neigh half newton on' are allowed.
   int nprocs;
   MPI_Comm_size(world,&nprocs);
   newton_pair = force->newton_pair;
@@ -250,7 +248,6 @@ void PairMLIPGtinvKokkos<DeviceType>::init_style() {
       } else {  // newton on
         neighbor->requests[irequest]->full = 1;
         neighbor->requests[irequest]->half = 0;
-        // error->all(FLERR, "Cannot (yet) use 'neigh full newton on' with MPI parallelization for mlip_gtinv/kk");
       }
     } else if (neighflag == HALF || neighflag == HALFTHREAD) {  // neigh half
       error->all(FLERR, "Cannot (yet) use neigh half with MPI parallelization for mlip_gtinv/kk");
@@ -263,16 +260,16 @@ void PairMLIPGtinvKokkos<DeviceType>::compute(int eflag_in, int vflag_in) {
   eflag = eflag_in;
   vflag = vflag_in;
 
-  if (neighflag == FULL) no_virial_fdotr_compute = 1;
+  //  virial is calculated in the MLIPModel, without LAMMPS function.
   no_virial_fdotr_compute = 1;
 
   ev_init(eflag, vflag, 0);
 
-  // From pair_lj_cut_kokkos.cpp
-  // https://github.com/lammps/lammps/blob/584943fc928351bc29f41a132aee3586e0a2286a/src/KOKKOS/pair_lj_cut_kokkos.cpp#L87-L98
   {
-    // reallocate per-atom arrays if necessary
+    // From pair_lj_cut_kokkos.cpp
+    // https://github.com/lammps/lammps/blob/584943fc928351bc29f41a132aee3586e0a2286a/src/KOKKOS/pair_lj_cut_kokkos.cpp#L87-L98
 
+    // reallocate per-atom arrays if necessary
     if (eflag_atom) {
       memoryKK->destroy_kokkos(k_eatom, eatom);
       memoryKK->create_kokkos(k_eatom, eatom, maxeatom, "pair:eatom");
@@ -285,14 +282,13 @@ void PairMLIPGtinvKokkos<DeviceType>::compute(int eflag_in, int vflag_in) {
     }
   }
 
-  // From pair_lj_cut_kokkos.cpp
-  // Sync to execution space before compute pair.
-  // Set modify_flag before compute pair.
-  // https://github.com/lammps/lammps/blob/584943fc928351bc29f41a132aee3586e0a2286a/src/KOKKOS/pair_lj_cut_kokkos.cpp#L100-L104
   {
+    // From pair_lj_cut_kokkos.cpp
+    // Sync to execution space before compute pair.
+    // Set modify_flag before compute pair.
+    // https://github.com/lammps/lammps/blob/584943fc928351bc29f41a132aee3586e0a2286a/src/KOKKOS/pair_lj_cut_kokkos.cpp#L100-L104
     atomKK->sync(execution_space, datamask_read);
     k_cutsq.template sync<DeviceType>();
-//    k_params.template sync<DeviceType>();
     if (eflag || vflag) atomKK->modified(execution_space, datamask_modify);
     else atomKK->modified(execution_space, F_MASK);
   }
@@ -306,10 +302,10 @@ void PairMLIPGtinvKokkos<DeviceType>::compute(int eflag_in, int vflag_in) {
   d_ilist = k_list->d_ilist;
   inum = list->inum;
 
-  // From pair_eam_alloy_kokkos.cpp
-  // Assign dupulicated views when HALFTHREAD and not using atomics.
-  // https://github.com/lammps/lammps/blob/998b76520e74b3a90580bf1a92155dcbe2843dba/src/KOKKOS/pair_eam_alloy_kokkos.cpp#L124-L135
   {
+    // From pair_eam_alloy_kokkos.cpp
+    // Assign dupulicated views when "HALFTHREAD and not using atomics".
+    // https://github.com/lammps/lammps/blob/998b76520e74b3a90580bf1a92155dcbe2843dba/src/KOKKOS/pair_eam_alloy_kokkos.cpp#L124-L135
     need_dup = lmp->kokkos->need_dup<DeviceType>();
     if (need_dup) {
       dup_f     = Kokkos::Experimental::create_scatter_view<Kokkos::Experimental::ScatterSum, Kokkos::Experimental::ScatterDuplicated>(f);
@@ -322,8 +318,8 @@ void PairMLIPGtinvKokkos<DeviceType>::compute(int eflag_in, int vflag_in) {
     }
   }
 
-  copymode = 1; // set not to deallocate during destruction
-  // required when classes are used as functors by Kokkos
+  copymode = 1; // Set not to deallocate during destruction.
+  // Required when classes are used as functors by Kokkos.
 
   atomKK->sync(Host, datamask_read);
 
@@ -331,9 +327,9 @@ void PairMLIPGtinvKokkos<DeviceType>::compute(int eflag_in, int vflag_in) {
   model->compute(k_list);
   model->get_forces(this, k_list);
 
-  // From pair_eam_alloy_kokkos.cpp
-  // https://github.com/lammps/lammps/blob/998b76520e74b3a90580bf1a92155dcbe2843dba/src/KOKKOS/pair_eam_alloy_kokkos.cpp#L251-L252
   {
+    // From pair_eam_alloy_kokkos.cpp
+    // https://github.com/lammps/lammps/blob/998b76520e74b3a90580bf1a92155dcbe2843dba/src/KOKKOS/pair_eam_alloy_kokkos.cpp#L251-L252
     if (need_dup)
       Kokkos::Experimental::contribute(f, dup_f);
   }
@@ -349,9 +345,9 @@ void PairMLIPGtinvKokkos<DeviceType>::compute(int eflag_in, int vflag_in) {
     virial[5] = tmp_stress[5];
   }
 
-  // From pair_eam_alloy_kokkos.cpp
-  // https://github.com/lammps/lammps/blob/998b76520e74b3a90580bf1a92155dcbe2843dba/src/KOKKOS/pair_eam_alloy_kokkos.cpp#L264-L276
   {
+    // From pair_eam_alloy_kokkos.cpp
+    // https://github.com/lammps/lammps/blob/998b76520e74b3a90580bf1a92155dcbe2843dba/src/KOKKOS/pair_eam_alloy_kokkos.cpp#L264-L276
     if (eflag_atom) {
       if (need_dup)
         Kokkos::Experimental::contribute(d_eatom, dup_eatom);
@@ -367,12 +363,14 @@ void PairMLIPGtinvKokkos<DeviceType>::compute(int eflag_in, int vflag_in) {
     }
   }
 
-  if (vflag_fdotr && !no_virial_fdotr_compute) pair_virial_fdotr_compute(this);
+//  if (vflag_fdotr && !no_virial_fdotr_compute) pair_virial_fdotr_compute(this);  // always false
   copymode = 0;
 
-  // From pair_eam_alloy_kokkos.cpp
-  // https://github.com/lammps/lammps/blob/998b76520e74b3a90580bf1a92155dcbe2843dba/src/KOKKOS/pair_eam_alloy_kokkos.cpp#L282-L288
-  {// free duplicated memory
+  {
+    // From pair_eam_alloy_kokkos.cpp
+    // https://github.com/lammps/lammps/blob/998b76520e74b3a90580bf1a92155dcbe2843dba/src/KOKKOS/pair_eam_alloy_kokkos.cpp#L282-L288
+
+    // free duplicated memory
     if (need_dup) {
       dup_f = decltype(dup_f)();
       dup_eatom = decltype(dup_eatom)();
@@ -393,7 +391,6 @@ void MLIPModelLMP<PairStyle, NeighListKokkos>::set_structure(PairStyle *fpair, N
   nlocal_ = fpair->atomKK->nlocal;  // Number of owned atoms in this proc.
   nall_ = fpair->atomKK->nlocal + fpair->atomKK->nghost;  // Total number of owned and ghost atoms on this proc
   auto h_x = fpair->atomKK->k_x.view_host();
-//  LAMMPS_NS::tagint *tag = fpair->atom->tag;
   auto h_tag = fpair->atomKK->k_tag.view_host();
   const std::vector<ElementType> &types = fpair->types;
 
@@ -414,16 +411,11 @@ void MLIPModelLMP<PairStyle, NeighListKokkos>::set_structure(PairStyle *fpair, N
     const LMPLocalIdx i = h_ilist(ii);
     n_pairs_ += h_numneigh(i);
   }
-//  Kokkos::parallel_reduce("number of (i, j) neighbors", inum, KOKKOS_LAMBDA(const int& i, int& lsum){
-//    lsum += d_numneigh(i);
-//  }, n_pairs_);
 
   // flatten half-neighbor list
   // neighbor_pair_index and neighbor_pair_displacements
   Kokkos::realloc(neighbor_pair_index_kk_, n_pairs_);
-//  neighbor_pair_index_kk_.sync_host();
   Kokkos::realloc(neighbor_pair_displacements_kk_, n_pairs_, 3);
-//  neighbor_pair_displacements_kk_.sync_host();
   auto h_neighbor_pair_index = neighbor_pair_index_kk_.view_host();
   auto h_neighbor_pair_displacements = neighbor_pair_displacements_kk_.view_host();
 
@@ -467,7 +459,6 @@ void MLIPModelLMP<PairStyle, NeighListKokkos>::set_structure(PairStyle *fpair, N
   count_neighbor = 0;
   for (int ii = 0; ii < inum_; ++ii) {
     const LMPLocalIdx i = h_ilist(ii);
-//    const LAMMPS_NS::AtomNeighborsConst neighbors_i = k_list->get_neighbors_const(i);
     if (i < nlocal_) {
       const int num_neighbors_i = h_numneigh(i);
       const X_FLOAT xtmp = h_x(i, 0);
@@ -475,7 +466,6 @@ void MLIPModelLMP<PairStyle, NeighListKokkos>::set_structure(PairStyle *fpair, N
       const X_FLOAT ztmp = h_x(i, 2);
       for (int jj = 0; jj < num_neighbors_i; ++jj) {
         LMPLocalIdx j = h_neighbors(i, jj);
-//      SiteIdx j = neighbors_i(jj);
         j &= NEIGHMASK;
         h_neighbor_pair_displacements(count_neighbor, 0) = h_x(j, 0) - xtmp;
         h_neighbor_pair_displacements(count_neighbor, 1) = h_x(j, 1) - ytmp;
@@ -558,19 +548,17 @@ void MLIPModelLMP<PairStyle, NeighListKokkos>::set_structure(PairStyle *fpair, N
   Kokkos::realloc(d_anlm_i_, nlocal_, n_types_, n_fn_, n_lm_half_);
   Kokkos::realloc(d_anlm_, nlocal_, n_types_, n_fn_, n_lm_all_);
   Kokkos::realloc(structural_features_kk_, nlocal_, n_des_);
-//  structural_features_kk_.sync_host();
   Kokkos::realloc(d_polynomial_adjoints_, nlocal_, n_des_);
   Kokkos::realloc(d_basis_function_adjoints_, nlocal_, n_typecomb_, n_fn_, n_lm_half_);
 
   Kokkos::realloc(site_energy_kk_, nlocal_);
-//  site_energy_kk_.sync_host();
   if (fpair->neighflag == FULL) {
+    // FULL stores forces on ghost atoms to be communicated thus View should be allocated for all atoms on the proc.
     Kokkos::realloc(forces_kk_, nall_, 3);
   } else {
+    // HALF or HALFTHREAD use only owned atoms.
     Kokkos::realloc(forces_kk_, nlocal_, 3);
   }
-//  forces_kk_.sync_host();
-
   Kokkos::fence();
 }
 
@@ -583,12 +571,14 @@ void MLIPModelLMP<PairStyle, NeighListKokkos>::get_forces(PairStyle *fpair, Neig
   auto h_f = fpair->atomKK->k_f.view_host();
   auto h_ilist = k_list->k_ilist.template view<LMPHostType>();
   if (fpair->neighflag == FULL) {
+    //  Copy all forces to the same indices.
     for (LMPLocalIdx i = 0; i < nall_; ++i) {
-      h_f(i, 0) += h_forces(i, 0);
-      h_f(i, 1) += h_forces(i, 1);
-      h_f(i, 2) += h_forces(i, 2);
+      h_f(i, 0) = h_forces(i, 0);
+      h_f(i, 1) = h_forces(i, 1);
+      h_f(i, 2) = h_forces(i, 2);
     }
-  } else {
+  } else {  // HALF or HALFTHREAD
+    // Copy i-th force of the model to the center atom of i-th neighbor list.
     fpair->atomKK->k_tag.sync_host();
     auto h_tag = fpair->atomKK->k_tag.view_host();
     for (int ii = 0; ii < inum_; ++ii) {

@@ -73,12 +73,8 @@ class PairMLIPGtinvKokkos : public PairMLIPGtinv {
   int neighflag;
   int newton_pair;
 
-//  Kokkos::View<T_INT *, DeviceType> d_map;                    // mapping from atom types to elements
-
   typedef Kokkos::DualView<F_FLOAT **, DeviceType> tdual_fparams;
   tdual_fparams k_cutsq;
-//  typedef Kokkos::View<const F_FLOAT **, DeviceType, Kokkos::MemoryTraits<Kokkos::RandomAccess>> t_fparams_rnd;
-//  t_fparams_rnd rnd_cutsq;
 
   // ---- for mlipkk ----
   std::vector<std::string> ele;
@@ -96,7 +92,7 @@ class PairMLIPGtinvKokkos : public PairMLIPGtinv {
   friend void MLIP_NS::MLIPModelLMP<PairMLIPGtinvKokkos<DeviceType>, NeighListKokkos<DeviceType>>::set_structure(
       PairMLIPGtinvKokkos<DeviceType> *fpair,
       NeighListKokkos<DeviceType> *k_list);
-  friend void pair_virial_fdotr_compute<PairMLIPGtinvKokkos>(PairMLIPGtinvKokkos *);
+//  friend void pair_virial_fdotr_compute<PairMLIPGtinvKokkos>(PairMLIPGtinvKokkos *);
   friend void MLIP_NS::MLIPModelLMP<PairMLIPGtinvKokkos<DeviceType>, NeighListKokkos<DeviceType>>::get_forces(
       PairMLIPGtinvKokkos<DeviceType> *fpair, NeighListKokkos<DeviceType> *k_list);
 };
