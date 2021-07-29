@@ -11,6 +11,12 @@
 namespace MLIP_NS {
 using LMPLocalIdx = int;  // locally assigned indices for atoms on this proc
 using LMPAtomID = int;  // LAMMPS atom ID, i.e. tagint-1.
+using ArgIdxPairCoeff = int;            // Index for arguments of `pair_coeff`
+using ElementIdxInFile = int;           // Index for elements in potential file
+using ElementNameInFile = std::string;  // Element name stored in potential file
+using NumOfAtomsInSystem = int;         // # of atoms in the system, i.e. atom->natoms
+using NumOfAtomsOnEachProc = int;       // # of atoms on the proc, owned + ghost
+using NumOfElementType = int;           // # of element types.
 
 // For overloading compute functions.
 // Use as a flag.
