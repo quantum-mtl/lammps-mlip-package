@@ -7,6 +7,7 @@ SHELL = /bin/sh
 # specify flags and libraries needed for your compiler
 
 KOKKOS_ABSOLUTE_PATH = $(shell cd $(KOKKOS_PATH); pwd)
+KOKKOS_CXX_STANDARD = c++17
 
 ifneq (,$(findstring Cuda,$(KOKKOS_DEVICES)))
 export MPICH_CXX = $(KOKKOS_ABSOLUTE_PATH)/bin/nvcc_wrapper
@@ -30,7 +31,8 @@ SHLIBFLAGS =	-shared
 # KOKKOS_DEVICES
 ifneq (,$(findstring Cuda,$(KOKKOS_DEVICES)))
 KOKKOS_DEVICES = Cuda
-KOKKOS_ARCH = Maxwell52
+KOKKOS_ARCH = Pascal60
+KOKKOS_CUDA_OPTIONS += "enable_lambda"
 else
 KOKKOS_DEVICES = "OpenMP"
 endif
