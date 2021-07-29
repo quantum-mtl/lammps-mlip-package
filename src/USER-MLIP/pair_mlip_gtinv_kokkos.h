@@ -46,7 +46,7 @@ class PairMLIPGtinvKokkos : public PairMLIPGtinv {
 
   // From pair_eam_alloy_kokkos.h
   // Declare dups for HALFTHREAD
-  // need_dup is HALFTHREAD(4u) when threads are gt 2 or gpus are gt 1.
+  // need_dup is HALFTHREAD(4u) when threads >= 2 or gpus >= 1.
   // https://github.com/lammps/lammps/blob/998b76520e74b3a90580bf1a92155dcbe2843dba/src/KOKKOS/pair_eam_alloy_kokkos.h#L130-L138
   int need_dup;
   Kokkos::Experimental::ScatterView<F_FLOAT*[3], typename DAT::t_f_array::array_layout,typename KKDevice<DeviceType>::value,typename Kokkos::Experimental::ScatterSum,Kokkos::Experimental::ScatterDuplicated> dup_f;
@@ -77,8 +77,8 @@ class PairMLIPGtinvKokkos : public PairMLIPGtinv {
   tdual_fparams k_cutsq;
 
   // ---- for mlipkk ----
-  std::vector<std::string> ele;
-  std::vector<int> map;
+  std::vector<MLIP_NS::ElementNameInFile> ele;
+  std::vector<MLIP_NS::ElementIdxInFile> map;  // Maps from argument index of `pair_coeff` to element index in file.
   typename MLIP_NS::vector1d mass;
   typename MLIP_NS::vector1d reg_coeffs;
   typename MLIP_NS::MLIPInput *fp;

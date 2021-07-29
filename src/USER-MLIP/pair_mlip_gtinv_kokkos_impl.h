@@ -48,10 +48,11 @@ PairMLIPGtinvKokkos<DeviceType>::PairMLIPGtinvKokkos(LAMMPS *lmp) : PairMLIPGtin
   model = nullptr;
   fp = nullptr;
   inum = eflag = vflag = neighflag = need_dup = 0;
-
-  std::cerr << "#######################\n";
-  std::cerr << "# PairMLIPGtinvKokkos #\n";
-  std::cerr << "#######################\n";
+#ifdef _DEBUG
+  int me;
+  MPI_Comm_rank(world, &me);
+  fprintf(stderr, "########## proc: %d   PairMLIPGtinvKokkos ##########\n", me);
+#endif /* _DEBUG */
 }
 
 template<class DeviceType>
@@ -72,9 +73,11 @@ PairMLIPGtinvKokkos<DeviceType>::~PairMLIPGtinvKokkos() {
       delete fp;
       fp = nullptr;
     }
-    std::cerr << "########################\n";
-    std::cerr << "# ~PairMLIPGtinvKokkos #\n";
-    std::cerr << "########################\n";
+#ifdef _DEBUG
+    int me;
+    MPI_Comm_rank(world, &me);
+    fprintf(stderr, "########### proc: %d   ~PairMLIPGtinvKokkos ##########\n", me);
+#endif /* _DEBUG */
   }
 }
 
@@ -101,29 +104,44 @@ void PairMLIPGtinvKokkos<DeviceType>::coeff(int narg, char **arg) {
   {
     // Read potential file and initialize MLIPModel.
     // To avoid multiple instantiation, delete them if exist.
-
+#ifdef _DEBUG
+    int me;
+    MPI_Comm_rank(world, &me);
+#endif /* _DEBUG */
     // read parameter file
     if (fp) {
+#ifdef _DEBUG
+      fprintf(stderr, "### Delete fp    on proc: %d\n", me);
+#endif /* _DEBUG */
       delete fp;
       fp = nullptr;
     }
     fp = new MLIP_NS::MLIPInput();
     MLIP_NS::read_potential_file(arg[2], ele, mass, fp, reg_coeffs, gtinvdata);
-
+#ifdef _DEBUG
+    fprintf(stderr, "### Create fp    on proc: %d, at: %p ###\n", me, (void *) fp);
+#endif /* _DEBUG */
     // initialize MLIP model instance
     if (model) {
+#ifdef _DEBUG
+      fprintf(stderr, "### Delete model on proc: %d\n", me);
+#endif /* _DEBUG */
       delete model;
       model = nullptr;
     }
     model = new MLIP_NS::MLIPModelLMP<PairMLIPGtinvKokkos<DeviceType>, NeighListKokkos<DeviceType>>();
     model->initialize(*fp, reg_coeffs, gtinvdata, this);
+#ifdef _DEBUG
+    fprintf(stderr, "### Create model on proc: %d, at: %p ###\n", me, (void *) model);
+#endif /* _DEBUG */
   }
 
   {
     // https://github.com/lammps/lammps/blob/584943fc928351bc29f41a132aee3586e0a2286a/src/KOKKOS/pair_eam_alloy_kokkos.cpp#L940-L952
     // read args that map atom types to elements in potential file
     // map[i] = which element the Ith atom type is, -1 if "NULL"
-    int i, j;
+    MLIP_NS::ArgIdxPairCoeff i;
+    MLIP_NS::ElementIdxInFile j;
     for (i = 3; i < narg; i++) {
       if (strcmp(arg[i], "NULL") == 0) {
         map[i - 2] = -1;
@@ -140,7 +158,7 @@ void PairMLIPGtinvKokkos<DeviceType>::coeff(int narg, char **arg) {
     // https://github.com/lammps/lammps/blob/584943fc928351bc29f41a132aee3586e0a2286a/src/KOKKOS/pair_eam_alloy_kokkos.cpp#L954-L959
     // clear setflag since coeff() called once with I,J = * *
     MLIP_NS::ElementType i, j;
-    MLIP_NS::ElementType n = atom->ntypes;
+    MLIP_NS::NumOfElementType n = atom->ntypes;
     for (i = 1; i <= n; i++)
       for (j = i; j <= n; j++)
         Pair::setflag[i][j] = 0;
@@ -152,7 +170,7 @@ void PairMLIPGtinvKokkos<DeviceType>::coeff(int narg, char **arg) {
     // set mass of atom type if i = j
     int count = 0;
     MLIP_NS::ElementType i, j;
-    MLIP_NS::ElementType n = atom->ntypes;
+    MLIP_NS::NumOfElementType n = atom->ntypes;
     for (i = 1; i <= n; i++) {
       for (j = i; j <= n; j++) {
         if (map[i] >= 0 && map[j] >= 0) {
@@ -165,11 +183,11 @@ void PairMLIPGtinvKokkos<DeviceType>::coeff(int narg, char **arg) {
     if (count == 0) error->all(FLERR, "Incorrect args for pair coefficients");
   }
 
-  {
+  if (lmp->kokkos->neighflag == HALF || lmp->kokkos->neighflag == HALFTHREAD) {
     // copy LAMMPS_NS::Atom::type to LAMMPS_NS::PairMLIPGtinv::types
     // map[i] starts from i=1
-    MLIP_NS::SiteIdx i;
-    MLIP_NS::SiteIdx n = atom->natoms;
+    MLIP_NS::LMPAtomID i;
+    MLIP_NS::NumOfAtomsInSystem n = atom->natoms;
     if (!types.empty()) {
       types.clear();
     }
@@ -392,10 +410,13 @@ void MLIPModelLMP<PairStyle, NeighListKokkos>::set_structure(PairStyle *fpair, N
   nall_ = fpair->atomKK->nlocal + fpair->atomKK->nghost;  // Total number of owned and ghost atoms on this proc
   auto h_x = fpair->atomKK->k_x.view_host();
   auto h_tag = fpair->atomKK->k_tag.view_host();
-  const std::vector<ElementType> &types = fpair->types;
+  const auto &types = fpair->types;
+  auto h_lmp_type = fpair->atomKK->k_type.view_host();
+  const auto &map = fpair->map;
 
   fpair->atomKK->k_x.sync_host();
   fpair->atomKK->k_tag.sync_host();
+  fpair->atomKK->k_type.sync_host();
 
   auto h_numneigh = Kokkos::create_mirror_view(d_numneigh);
   auto h_neighbors = Kokkos::create_mirror_view(d_neighbors);
@@ -481,15 +502,15 @@ void MLIPModelLMP<PairStyle, NeighListKokkos>::set_structure(PairStyle *fpair, N
 
   // neighbor_pair_typecomb
   Kokkos::realloc(neighbor_pair_typecomb_kk_, n_pairs_);
-//  neighbor_pair_typecomb_kk_.sync_host();
   auto h_neighbor_pair_typecomb = neighbor_pair_typecomb_kk_.view_host();
   if (neighflag_ == FULL) {
+    // Store types for all pairs on the proc.
     for (NeighborPairIdx npidx = 0; npidx < n_pairs_; ++npidx) {
       const auto &ij = h_neighbor_pair_index(npidx);
-      const LMPAtomID i = h_tag(ij.first) - 1;
-      const LMPAtomID j = h_tag(ij.second) - 1;
-      const ElementType type_i = types[i];
-      const ElementType type_j = types[j];
+      const LMPLocalIdx i = ij.first;
+      const LMPLocalIdx j = ij.second;
+      const ElementType type_i = map[h_lmp_type(i)];
+      const ElementType type_j = map[h_lmp_type(j)];
       h_neighbor_pair_typecomb(npidx) = type_pairs_kk_.h_view(type_i, type_j);
     }
   } else if (neighflag_ == HALF || neighflag_ == HALFTHREAD) {
@@ -507,29 +528,22 @@ void MLIPModelLMP<PairStyle, NeighListKokkos>::set_structure(PairStyle *fpair, N
 
   // types
   if (neighflag_ == FULL) {
+    // Store types of all atoms on the proc, including ghost atoms.
     Kokkos::realloc(types_kk_, nall_);
     auto h_types = types_kk_.view_host();
-    for (NeighborPairIdx npidx = 0; npidx < n_pairs_; ++npidx) {
-      const auto &ij = h_neighbor_pair_index(npidx);
-      const LMPLocalIdx i = ij.first;
-      const LMPLocalIdx j = ij.second;
-      const LMPAtomID site_i = h_tag(i) - 1;
-      const LMPAtomID site_j = h_tag(j) - 1;
-      h_types(i) = types[site_i];
-      h_types(j) = types[site_j];
+    for (SiteIdx i = 0; i < nall_; i++) {
+      // Element types (int) loaded from in-file is mapped into MLIP potential index:
+      h_types(i) = map[h_lmp_type(i)];
     }
   } else if (neighflag_ == HALF || neighflag_ == HALFTHREAD) {
+    // Store types of owned atoms.
     Kokkos::realloc(types_kk_, inum_);
     auto h_types = types_kk_.view_host();
-    for (NeighborPairIdx npidx = 0; npidx < n_pairs_; ++npidx) {
-      const auto &ij = h_neighbor_pair_index(npidx);
-      const LMPAtomID site_i = ij.first;
-      const LMPAtomID site_j = ij.second;
-      h_types(site_i) = types[site_i];
-      h_types(site_j) = types[site_j];
+    for (SiteIdx i = 0; i < nlocal_; i++) {
+      h_types(i) = types[i];
     }
   }
-    types_kk_.modify_host();
+  types_kk_.modify_host();
   types_kk_.sync_device();
 
   // resize views

@@ -283,16 +283,16 @@ void MLIPModelLMP<PairStyle, NeighListKokkos>::compute_order_parameters(NeighFul
                          const LMPLocalIdx i = ij.first;
                          const LMPLocalIdx j = ij.second;
 
-                         const ElementType type_i = d_types(i);
+//                         const ElementType type_i = d_types(i);
                          const ElementType type_j = d_types(j);
 
                          auto s_anlm_r_a = s_anlm_r.access();
                          auto s_anlm_i_a = s_anlm_i.access();
 
                          const int l = d_lm_info(lmi, 0);
-                         const double scale = (l % 2) ? -1.0 : 1.0;  // sign for parity
+//                         const double scale = (l % 2) ? -1.0 : 1.0;  // sign for parity
                          const Kokkos::complex<double> val = d_fn_(npidx, n) * d_ylm_(npidx, lmi);
-                         // neighbors_ is a half list!!!
+                         // neighbors_ is a full list!!!
                          s_anlm_r_a(i, type_j, n, lmi) += val.real();
                          s_anlm_i_a(i, type_j, n, lmi) -= val.imag();  // take c.c.
                         //  if (i != j) {
