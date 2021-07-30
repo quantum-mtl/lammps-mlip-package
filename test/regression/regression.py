@@ -17,8 +17,8 @@ class RegressionTest(unittest.TestCase):
         self.log_path = ['log.lammps.' + p for p in potential_list]
         self.lmp_option = [
             [],
-            ['-sf', 'kk', '-k', 'on', 't', '4', '-pk', 'kokkos', 'neigh', 'half', 'newton', 'on'],
-            ['-sf', 'kk', '-k', 'on', 't', '4', '-pk', 'kokkos', 'neigh', 'full', 'newton', 'on'],
+            ['-sf', 'kk', '-k', 'on', 't', '2', '-pk', 'kokkos', 'neigh', 'half', 'newton', 'on'],
+            ['-sf', 'kk', '-k', 'on', 't', '2', '-pk', 'kokkos', 'neigh', 'full', 'newton', 'on'],
         ]
 
 
