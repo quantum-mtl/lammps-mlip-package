@@ -6,9 +6,10 @@
 
 PairStyle(mlip_gtinv/kk,PairMLIPGtinvKokkos<LMPDeviceType>)
 PairStyle(mlip_gtinv/kk/device,PairMLIPGtinvKokkos<LMPDeviceType>)
+#ifdef LMP_KOKKOS_GPU
 PairStyle(mlip_gtinv/kk/host,PairMLIPGtinvKokkos<LMPHostType>)
-
-#else
+#endif  /* LMP_KOKKOS_GPU */
+#else  /* PAIR_CLASS */
 
 #ifndef LMP_PAIR_MLIP_GTINV_KOKKOS_H_
 #define LMP_PAIR_MLIP_GTINV_KOKKOS_H_
@@ -83,18 +84,19 @@ class PairMLIPGtinvKokkos : public PairMLIPGtinv {
   typename MLIP_NS::vector1d reg_coeffs;
   typename MLIP_NS::MLIPInput *fp;
   typename MLIP_NS::Readgtinv gtinvdata;
-  typename MLIP_NS::MLIPModelLMP<PairMLIPGtinvKokkos<DeviceType>, NeighListKokkos<DeviceType>> *model;
-  friend void MLIP_NS::MLIPModelLMP<PairMLIPGtinvKokkos<DeviceType>,
-                                    NeighListKokkos<DeviceType>>::initialize(const MLIP_NS::MLIPInput &input,
-                                                                             const vector1d &reg_coeffs,
-                                                                             const Readgtinv &gtinvdata,
-                                                                             PairMLIPGtinvKokkos<DeviceType> *fpair);
-  friend void MLIP_NS::MLIPModelLMP<PairMLIPGtinvKokkos<DeviceType>, NeighListKokkos<DeviceType>>::set_structure(
-      PairMLIPGtinvKokkos<DeviceType> *fpair,
-      NeighListKokkos<DeviceType> *k_list);
-//  friend void pair_virial_fdotr_compute<PairMLIPGtinvKokkos>(PairMLIPGtinvKokkos *);
-  friend void MLIP_NS::MLIPModelLMP<PairMLIPGtinvKokkos<DeviceType>, NeighListKokkos<DeviceType>>::get_forces(
-      PairMLIPGtinvKokkos<DeviceType> *fpair, NeighListKokkos<DeviceType> *k_list);
+  typename MLIP_NS::MLIPModelLMP<LAMMPS_NS::PairMLIPGtinvKokkos<DeviceType>, LAMMPS_NS::NeighListKokkos<DeviceType>> *model;
+  friend void MLIP_NS::MLIPModelLMP<LAMMPS_NS::PairMLIPGtinvKokkos<DeviceType>, LAMMPS_NS::NeighListKokkos<DeviceType>>::initialize(
+      const MLIP_NS::MLIPInput &input,
+      const vector1d &reg_coeffs,
+      const MLIP_NS::Readgtinv &gtinvdata,
+      LAMMPS_NS::PairMLIPGtinvKokkos<DeviceType> *fpair);
+  friend void MLIP_NS::MLIPModelLMP<LAMMPS_NS::PairMLIPGtinvKokkos<DeviceType>, LAMMPS_NS::NeighListKokkos<DeviceType>>::set_structure(
+      typename LAMMPS_NS::PairMLIPGtinvKokkos<DeviceType> *fpair,
+      typename LAMMPS_NS::NeighListKokkos<DeviceType> *k_list);
+  //  friend void pair_virial_fdotr_compute<PairMLIPGtinvKokkos>(PairMLIPGtinvKokkos *);
+  friend void MLIP_NS::MLIPModelLMP<LAMMPS_NS::PairMLIPGtinvKokkos<DeviceType>, LAMMPS_NS::NeighListKokkos<DeviceType>>::get_forces(
+      typename LAMMPS_NS::PairMLIPGtinvKokkos<DeviceType> *fpair,
+      typename LAMMPS_NS::NeighListKokkos<DeviceType> *k_list);
 };
 } // namespace LAMMPS
 
