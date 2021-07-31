@@ -97,9 +97,16 @@ pair_coeff * * pyml.lammps.mlip Ti Al
 ```
 
 ## Examples
+Without Kokkos:
 ```
 cd example
 ./../lmp_mlip_kokkos -in in.mlip
+```
+
+With Kokkos on 1 Device and 12 OpenMP threads:
+```
+cd example
+./../lmp_mlip_kokkos -in in.mlip -sf kk -k on g 1 t 12 -pk kokkos neigh half newton on
 ```
 
 ## Development

@@ -11,16 +11,21 @@ class RegressionTest(unittest.TestCase):
 
     def setUp(self):
         self.lammps_path = os.path.join(os.path.dirname(__file__), '..', '..', 'lmp_mlip_kokkos')
-        potential_list = ['pair-60', 'gtinv-197']
+        potential_list = ['pair-60', 'gtinv-197', 'gtinv-197']
         self.input_path = [p + '.in' for p in potential_list]
         self.dump_path = ['dump.atom.' + p for p in potential_list]
         self.log_path = ['log.lammps.' + p for p in potential_list]
+        self.lmp_option = [
+            [],
+            ['-sf', 'kk', '-k', 'on', 't', '2', '-pk', 'kokkos', 'neigh', 'half', 'newton', 'on'],
+            ['-sf', 'kk', '-k', 'on', 't', '2', '-pk', 'kokkos', 'neigh', 'full', 'newton', 'on'],
+        ]
 
 
     def test_regression(self):
-        for input_, dump, log in zip(self.input_path, self.dump_path, self.log_path):
-            with self.subTest(input_=input_, dump=dump, log=log):
-                subprocess.run([self.lammps_path, '-in', input_])
+        for input_, dump, log, opt in zip(self.input_path, self.dump_path, self.log_path, self.lmp_option):
+            with self.subTest(input_=input_, dump=dump, log=log, opt=opt):
+                subprocess.run([self.lammps_path, '-in', input_, *opt])
 
                 # Compare final coordinates of atoms
                 with open('dump.atom', 'r') as f:

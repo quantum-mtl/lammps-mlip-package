@@ -42,7 +42,10 @@ using namespace LAMMPS_NS;
 
 PairMLIPGtinv::PairMLIPGtinv(LAMMPS *lmp) : Pair(lmp)
 {
+    single_enable = 0;
     restartinfo = 0;
+    one_coeff = 1;
+    manybody_flag = 1;
 }
 
 
@@ -52,6 +55,8 @@ PairMLIPGtinv::PairMLIPGtinv(LAMMPS *lmp) : Pair(lmp)
 
 PairMLIPGtinv::~PairMLIPGtinv()
 {
+  if (copymode) return;
+
   if (allocated) {
     memory->destroy(setflag);
     memory->destroy(cutsq);
@@ -533,8 +538,6 @@ void PairMLIPGtinv::allocate()
       for (int j = i; j <= n; j++)
       setflag[i][j] = 0;
 
-
-  memory->create(setflag,n+1,n+1,"pair:setflag");
   memory->create(cutsq,n+1,n+1,"pair:cutsq");
 
 }

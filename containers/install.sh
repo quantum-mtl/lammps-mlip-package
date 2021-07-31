@@ -22,6 +22,9 @@ cp "${lammps_mlip_root}/containers/Makefile.lammps" "${lammps_root}/lib/mlip/Mak
 cp "${lammps_mlip_root}/containers/Makefile" "${lammps_root}/src/Makefile"
 cp "${lammps_mlip_root}/containers/Makefile.mlip_kokkos" "${lammps_root}/src/MAKE/Makefile.mlip_kokkos"
 
+# modify verlet_kokkos.cpp
+sed -i -z 's/modify->setup(vflag);.*output->setup(flag);/modify->setup(vflag);\n  atomKK->sync(Host,ALL_MASK);\n  output->setup(flag);/' "${lammps_root}/src/KOKKOS/verlet_kokkos.cpp"
+
 # make
 curr="$(pwd)"
 cd "${lammps_root}/src"
