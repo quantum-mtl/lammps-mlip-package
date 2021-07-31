@@ -11,13 +11,20 @@ class RegressionTest(unittest.TestCase):
 
     def setUp(self):
         self.lammps_path = os.path.join(os.path.dirname(__file__), '..', '..', 'lmp_mlip_kokkos')
-        potential_list = ['pair-60', 'gtinv-197', 'gtinv-197']
+        potential_list = [
+            'pair-60',
+            'gtinv-197', 'gtinv-197',  # model_type=2
+            'gtinv-820',  # model_type=3
+            'gtinv-434',  # model_type=4
+        ]
         self.input_path = [p + '.in' for p in potential_list]
         self.dump_path = ['dump.atom.' + p for p in potential_list]
         self.log_path = ['log.lammps.' + p for p in potential_list]
         self.lmp_option = [
             [],
             ['-sf', 'kk', '-k', 'on', 't', '2', '-pk', 'kokkos', 'neigh', 'half', 'newton', 'on'],
+            ['-sf', 'kk', '-k', 'on', 't', '2', '-pk', 'kokkos', 'neigh', 'full', 'newton', 'on'],
+            ['-sf', 'kk', '-k', 'on', 't', '2', '-pk', 'kokkos', 'neigh', 'full', 'newton', 'on'],
             ['-sf', 'kk', '-k', 'on', 't', '2', '-pk', 'kokkos', 'neigh', 'full', 'newton', 'on'],
         ]
 

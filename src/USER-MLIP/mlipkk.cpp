@@ -335,7 +335,6 @@ void MLIPModel::set_structure(const std::vector<ElementType>& types,
     types_kk_.sync_device();
 
     // resize views
-    // TODO: move resizes to hide allocation time
     Kokkos::resize(d_distance_, n_pairs_);
     Kokkos::resize(d_fn_, n_pairs_, n_fn_);
     Kokkos::resize(d_fn_der_, n_pairs_, n_fn_);

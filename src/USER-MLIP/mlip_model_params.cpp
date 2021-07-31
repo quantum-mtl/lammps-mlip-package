@@ -39,7 +39,7 @@ ModelParams::ModelParams(const struct feature_params& fp){
 
     vector1i polynomial_index;
     if (fp.model_type == 2){
-        for (int n = 0; n < n_des; ++n) 
+        for (int n = 0; n < n_des; ++n)
             polynomial_index.emplace_back(n);
     }
     else if (fp.model_type == 3 and fp.des_type == "gtinv"){
@@ -65,7 +65,7 @@ ModelParams::ModelParams(const struct feature_params& fp){
         std::sort(polynomial_index.begin(),polynomial_index.end());
     }
 
-
+    // construct comb2, comb3
     if (fp.model_type == 1) n_coeff_all = n_des * fp.maxp;
     else if (fp.model_type > 1){
         if (fp.des_type == "pair"){
@@ -117,7 +117,7 @@ void ModelParams::uniq_gtinv_type(const feature_params& fp){
             vector1i tc, t1a;
             for (const auto& lt1: lt) tc.emplace_back(lt1.second);
             for (int type1 = 0; type1 < n_type; ++type1){
-                if (check_type_comb_pair(tc, type1) == true) 
+                if (check_type_comb_pair(tc, type1) == true)
                     t1a.emplace_back(type1);
             }
             linear_array_g.emplace_back(LinearTermGtinv({i,tc,t1a}));
@@ -173,7 +173,7 @@ bool ModelParams::check_type(const vector2i &type1_array){
     return false;
 }
 
-int ModelParams::seq2typecomb(const int& seq){ 
+int ModelParams::seq2typecomb(const int& seq){
     return seq/n_fn;
 }
 int ModelParams::seq2igtinv(const int& seq){
@@ -219,7 +219,7 @@ void ModelParams::combination3(const vector1i& iarray){
 
 
 bool ModelParams::check_type_comb_pair
-(const vector1i& index, const int& type1) const{ 
+(const vector1i& index, const int& type1) const{
     vector1i size;
     for (const auto& p2: index){
         size.emplace_back(type_comb_pair[p2][type1].size());
@@ -238,15 +238,14 @@ const vector2i& ModelParams::get_comb3() const{ return comb3; }
 const vector3i& ModelParams::get_type_comb_pair() const{ return type_comb_pair;}
 
 vector1i ModelParams::get_type_comb_pair
-(const vector1i& tc_index, const int& type1){ 
+(const vector1i& tc_index, const int& type1){
     vector1i all;
-    for (const auto& i: tc_index) 
+    for (const auto& i: tc_index)
         all.emplace_back(type_comb_pair[i][type1][0]);
     return all;
 }
 
-const std::vector<struct LinearTermGtinv>& 
+const std::vector<struct LinearTermGtinv>&
 ModelParams::get_linear_term_gtinv() const{
     return linear_array_g;
 }
-
