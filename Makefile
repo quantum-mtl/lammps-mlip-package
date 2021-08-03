@@ -57,8 +57,11 @@ test-regression: clean-lammps ## do regression test
 clean-all: clean-lammps clean-test clean-docker  ## clean all artifacts
 
 clean-lammps:  ## clean lammps-related binaries
+	rm -f ./lammps/src/MAKE/Makefile.mlip_kokkos
 	rm -f ./lammps/src/lmp_*
 	rm -f ./lammps/src/mlip_*
+	rm -f ./lammps/src/mlipkk*
+	rm -f ./lammps/src/pair_mlip_*
 	rm -rf ./lammps/src/USER-MLIP
 	rm -rf ./lammps/src/Obj_mlip_kokkos
 

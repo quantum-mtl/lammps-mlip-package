@@ -64,10 +64,6 @@ void read_potential_file(const char* file, std::vector<std::string>& ele, vector
 
     // line 5-7: model_type, max power, max l
     fp->model_type = get_value<int>(input);
-    if (fp->model_type != 2) {
-        std::cerr << "NotImplemented: model_type == " << fp->model_type << std::endl;
-        exit(1);
-    }
 
     fp->maxp = get_value<int>(input);
     fp->maxl = get_value<int>(input);
@@ -114,7 +110,7 @@ int get_num_coeffs(const MLIPInput& input, const Readgtinv& gtinvdata) {
     const auto& l_array = gtinvdata.get_l_comb();
     const auto irreps_type_pairs = get_unique_irreps_type_pairs(input.n_type, l_array);
     const MLIPPolynomial poly(input.model_type, input.maxp, n_fn, input.n_type, irreps_type_pairs);
-    int num_coeffs = static_cast<int>(poly.get_structural_features_prod_index().size());
+    int num_coeffs = static_cast<int>(poly.get_n_coeffs());
     return num_coeffs;
 }
 

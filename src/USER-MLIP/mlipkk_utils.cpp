@@ -35,6 +35,7 @@ std::vector<std::vector<int>> get_combinations(int n, int r) {
 }
 
 /// @brief chose k elements from {0, 1, ..., n - 1} with repetitions
+///        Example: n=3, r=2 -> {{0, 0}, {0, 1}, {0, 2}, {1, 1}, {1, 2}, {2, 2}}
 std::vector<std::vector<int>> get_combinations_with_repetition(int n, int r) {
     std::vector<std::vector<int>> ret;
 
@@ -64,6 +65,7 @@ std::vector<std::vector<int>> get_combinations_with_repetition(int n, int r) {
 
 /// @brief chose k elements from {0, 1, ..., n - 1} with repetitions.
 ///        Used for constructing indices of polynomial features in historial reason.
+///        Example: n=3, r=2 -> {{0, 0}, {1, 0}, {1, 1}, {2, 0}, {2, 1}, {2, 2}}
 std::vector<std::vector<int>> get_combinations_with_repetition_gtinv(int n, int r) {
     std::vector<std::vector<int>> ret;
 
