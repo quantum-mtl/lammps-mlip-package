@@ -1,0 +1,10 @@
+dimension       3
+units           metal
+read_data       structure_00064_triclinic.lammps
+
+pair_style      mlip_gtinv
+pair_coeff * *  gtinv-197.mlip Ti Al
+
+thermo_style    custom step temp epair emol etotal press vol fmax fnorm
+
+run             0
