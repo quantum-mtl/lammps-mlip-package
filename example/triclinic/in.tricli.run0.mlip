@@ -1,0 +1,23 @@
+dimension       3
+units           metal
+read_data       structure_00064_conventional.lammps
+
+pair_style      mlip_gtinv
+pair_coeff * *  ../mlp.lammps Ti Al
+
+thermo_style    custom step temp epair emol etotal press vol fmax fnorm
+
+run             0
+
+clear
+
+dimension       3
+units           metal
+read_data       structure_00064_triclinic.lammps
+
+pair_style      mlip_gtinv
+pair_coeff * *  ../mlp.lammps Ti Al
+
+thermo_style    custom step temp epair emol etotal press vol fmax fnorm
+
+run             0
