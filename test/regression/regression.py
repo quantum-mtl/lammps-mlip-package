@@ -84,7 +84,7 @@ class RegressionTest(unittest.TestCase):
 
         self.assertAlmostEqual(initial_temperature_actual, initial_temperature_expect)
         self.assertAlmostEqual(initial_total_energy_actual, initial_total_energy_expect)
-        self.assertAlmostEqual(initial_pressure_actual, initial_pressure_expect)
+        self.assertAlmostEqual(initial_pressure_actual, initial_pressure_expect, delta=0.1)
 
 
 def get_atom_coords(lines):
