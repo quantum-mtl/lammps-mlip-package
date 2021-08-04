@@ -2,6 +2,8 @@ import unittest
 import os
 import subprocess
 import re
+import sys
+import argparse
 
 
 L1_TOL = 1e-4  # tolerance for L1 displacements of two configurations
@@ -20,13 +22,22 @@ class RegressionTest(unittest.TestCase):
         self.input_path = [p + '.in' for p in potential_list]
         self.dump_path = ['dump.atom.' + p for p in potential_list]
         self.log_path = ['log.lammps.' + p for p in potential_list]
-        self.lmp_option = [
-            [],
-            ['-sf', 'kk', '-k', 'on', 't', '2', '-pk', 'kokkos', 'neigh', 'half', 'newton', 'on'],
-            ['-sf', 'kk', '-k', 'on', 't', '2', '-pk', 'kokkos', 'neigh', 'full', 'newton', 'on'],
-            ['-sf', 'kk', '-k', 'on', 't', '2', '-pk', 'kokkos', 'neigh', 'full', 'newton', 'on'],
-            ['-sf', 'kk', '-k', 'on', 't', '2', '-pk', 'kokkos', 'neigh', 'full', 'newton', 'on'],
-        ]
+        if args.arch == 'OpenMP':
+            self.lmp_option = [
+                [],
+                ['-sf', 'kk', '-k', 'on', 't', '2', '-pk', 'kokkos', 'neigh', 'half', 'newton', 'on'],
+                ['-sf', 'kk', '-k', 'on', 't', '2', '-pk', 'kokkos', 'neigh', 'full', 'newton', 'on'],
+                ['-sf', 'kk', '-k', 'on', 't', '2', '-pk', 'kokkos', 'neigh', 'full', 'newton', 'on'],
+                ['-sf', 'kk', '-k', 'on', 't', '2', '-pk', 'kokkos', 'neigh', 'full', 'newton', 'on'],
+            ]
+        elif args.arch == 'Cuda':
+            self.lmp_option = [
+                [],
+                ['-sf', 'kk', '-k', 'on', 'g', '1', '-pk', 'kokkos', 'neigh', 'half', 'newton', 'on'],
+                ['-sf', 'kk', '-k', 'on', 'g', '1', '-pk', 'kokkos', 'neigh', 'full', 'newton', 'on'],
+                ['-sf', 'kk', '-k', 'on', 'g', '1', '-pk', 'kokkos', 'neigh', 'full', 'newton', 'on'],
+                ['-sf', 'kk', '-k', 'on', 'g', '1', '-pk', 'kokkos', 'neigh', 'full', 'newton', 'on'],
+            ]
 
 
     def test_regression(self):
@@ -83,4 +94,9 @@ def get_thermo_info(lines):
 
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--arch', default='OpenMP', help='Specify Kokkos architecture from OpenMP or Cuda')
+    parser.add_argument('unittest_args', nargs='*')
+    args = parser.parse_args()
+    sys.argv[1:] = args.unittest_args
     unittest.main()
