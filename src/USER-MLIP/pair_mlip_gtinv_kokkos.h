@@ -89,7 +89,7 @@ class PairMLIPGtinvKokkos : public PairMLIPGtinv {
       const MLIP_NS::MLIPInput &input,
       const vector1d &reg_coeffs,
       const MLIP_NS::Readgtinv &gtinvdata,
-      LAMMPS_NS::PairMLIPGtinvKokkos<DeviceType> *fpair);
+      typename LAMMPS_NS::PairMLIPGtinvKokkos<DeviceType> *fpair);
   friend void MLIP_NS::MLIPModelLMP<LAMMPS_NS::PairMLIPGtinvKokkos<DeviceType>, LAMMPS_NS::NeighListKokkos<DeviceType>>::set_structure(
       typename LAMMPS_NS::PairMLIPGtinvKokkos<DeviceType> *fpair,
       typename LAMMPS_NS::NeighListKokkos<DeviceType> *k_list);
