@@ -1,0 +1,41 @@
+dimension       3
+units           metal
+read_data       structure_00064_conventional.lammps
+
+pair_style      mlip_gtinv
+pair_coeff * *  ../mlp.lammps Ti Al
+
+# Define minimization parameters
+variable        etol equal 0.0
+variable        ftol equal 1.0e-10
+variable        maxiter equal 10000
+variable        maxeval equal 10000
+
+# Displace all atoms slightly
+displace_atoms  all random 0.05 0.05 0.05 12345 units box
+
+minimize        ${etol} ${ftol} ${maxiter} ${maxeval}
+fix             1 all box/relax  aniso 0.0
+minimize        ${etol} ${ftol} ${maxiter} ${maxeval}
+
+clear
+
+dimension       3
+units           metal
+read_data       structure_00064_triclinic.lammps
+
+pair_style      mlip_gtinv
+pair_coeff * *  ../mlp.lammps Ti Al
+
+# Define minimization parameters
+variable        etol equal 0.0
+variable        ftol equal 1.0e-10
+variable        maxiter equal 10000
+variable        maxeval equal 10000
+
+# Displace all atoms slightly
+displace_atoms  all random 0.05 0.05 0.05 12345 units box
+
+minimize        ${etol} ${ftol} ${maxiter} ${maxeval}
+fix             1 all box/relax  aniso 0.0
+minimize        ${etol} ${ftol} ${maxiter} ${maxeval}

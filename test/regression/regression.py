@@ -2,6 +2,8 @@ import unittest
 import os
 import subprocess
 import re
+import sys
+import argparse
 
 
 L1_TOL = 1e-4  # tolerance for L1 displacements of two configurations
@@ -20,13 +22,22 @@ class RegressionTest(unittest.TestCase):
         self.input_path = [p + '.in' for p in potential_list]
         self.dump_path = ['dump.atom.' + p for p in potential_list]
         self.log_path = ['log.lammps.' + p for p in potential_list]
-        self.lmp_option = [
-            [],
-            ['-sf', 'kk', '-k', 'on', 't', '2', '-pk', 'kokkos', 'neigh', 'half', 'newton', 'on'],
-            ['-sf', 'kk', '-k', 'on', 't', '2', '-pk', 'kokkos', 'neigh', 'full', 'newton', 'on'],
-            ['-sf', 'kk', '-k', 'on', 't', '2', '-pk', 'kokkos', 'neigh', 'full', 'newton', 'on'],
-            ['-sf', 'kk', '-k', 'on', 't', '2', '-pk', 'kokkos', 'neigh', 'full', 'newton', 'on'],
-        ]
+        if args.arch == 'OpenMP':
+            self.lmp_option = [
+                [],
+                ['-sf', 'kk', '-k', 'on', 't', '2', '-pk', 'kokkos', 'neigh', 'half', 'newton', 'on'],
+                ['-sf', 'kk', '-k', 'on', 't', '2', '-pk', 'kokkos', 'neigh', 'full', 'newton', 'on'],
+                ['-sf', 'kk', '-k', 'on', 't', '2', '-pk', 'kokkos', 'neigh', 'full', 'newton', 'on'],
+                ['-sf', 'kk', '-k', 'on', 't', '2', '-pk', 'kokkos', 'neigh', 'full', 'newton', 'on'],
+            ]
+        elif args.arch == 'Cuda':
+            self.lmp_option = [
+                [],
+                ['-sf', 'kk', '-k', 'on', 'g', '1', '-pk', 'kokkos', 'neigh', 'half', 'newton', 'on'],
+                ['-sf', 'kk', '-k', 'on', 'g', '1', '-pk', 'kokkos', 'neigh', 'full', 'newton', 'on'],
+                ['-sf', 'kk', '-k', 'on', 'g', '1', '-pk', 'kokkos', 'neigh', 'full', 'newton', 'on'],
+                ['-sf', 'kk', '-k', 'on', 'g', '1', '-pk', 'kokkos', 'neigh', 'full', 'newton', 'on'],
+            ]
 
 
     def test_regression(self):
@@ -58,6 +69,24 @@ class RegressionTest(unittest.TestCase):
                 self.assertAlmostEqual(final_pressure_acutal, final_pressure_expect)
 
 
+    def test_triclinic_run0(self):
+        # use gtinv-197 with full-neighbor style and newton on
+        input_ = 'gtinv-197-tricli.in'
+        log = 'log.lammps.gtinv-197.conv64'
+        opt = self.lmp_option[2]
+        subprocess.run([self.lammps_path, '-in', input_, *opt])
+
+        # Compare thermo info
+        with open('log.lammps', 'r') as f:
+            initial_temperature_actual, initial_total_energy_actual, initial_pressure_actual = get_thermo_info(f.read().splitlines())
+        with open(log, 'r') as f:
+            initial_temperature_expect, initial_total_energy_expect, initial_pressure_expect = get_thermo_info(f.read().splitlines())
+
+        self.assertAlmostEqual(initial_temperature_actual, initial_temperature_expect)
+        self.assertAlmostEqual(initial_total_energy_actual, initial_total_energy_expect)
+        self.assertAlmostEqual(initial_pressure_actual, initial_pressure_expect, delta=0.1)
+
+
 def get_atom_coords(lines):
     coords = []
     for line in lines[9:]:
@@ -83,4 +112,9 @@ def get_thermo_info(lines):
 
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--arch', default='OpenMP', help='Specify Kokkos architecture from OpenMP or Cuda')
+    parser.add_argument('unittest_args', nargs='*')
+    args = parser.parse_args()
+    sys.argv[1:] = args.unittest_args
     unittest.main()

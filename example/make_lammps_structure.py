@@ -17,6 +17,6 @@ if __name__ == '__main__':
     structure.make_supercell([2, 2, 2])
     structure.perturb(0.1)
 
-    ld = LammpsData.from_structure(structure)
+    ld = LammpsData.from_structure(structure, atom_style="atomic")
     # output file need to be fixed
     ld.write_file("structure.lammps")

@@ -40,3 +40,5 @@ googletest
 *DS_Store
 .vscode
 *.sif
+cmake-build-debug/
+.ipynb_checkpoints

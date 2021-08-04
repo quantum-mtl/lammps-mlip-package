@@ -1,0 +1,29 @@
+dimension       3
+units           metal
+read_data       structure_00064_conventional.lammps
+
+pair_style      mlip_gtinv
+pair_coeff * *  ../mlp.lammps Ti Al
+
+velocity	    all create 100.0 376847 loop geom
+
+fix             1 all nve
+thermo          100
+thermo_style    custom step temp epair emol etotal press vol fmax fnorm
+run             1000
+
+clear
+
+dimension       3
+units           metal
+read_data       structure_00064_triclinic.lammps
+
+pair_style      mlip_gtinv
+pair_coeff * *  ../mlp.lammps Ti Al
+
+velocity	    all create 100.0 376847 loop geom
+
+fix             1 all nve
+thermo          100
+thermo_style    custom step temp epair emol etotal press vol fmax fnorm
+run             1000
