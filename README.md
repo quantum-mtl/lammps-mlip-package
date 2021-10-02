@@ -36,16 +36,19 @@ singularity run --nv mlip.sif
 
 #### With CMake
 
-Please change `Kokkos_ARCH_SNB` and `Kokkos_ARCH_PASCAL60` based on [architecture](https://docs.lammps.org/Build_extras.html#available-architecture-settings)
+Please change `Kokkos_ARCH_SNB` and `Kokkos_ARCH_PASCAL60` based on [architecture](https://docs.lammps.org/Build_extras.html#available-architecture-settings).
 ```shell
 cp -r src/USER-MLIP lammps/src
 cp containers/CMakeLists.txt lammps/cmake/CMakeLists.txt
 cd lammps
 mkdir build && cd build
-cmake -D Kokkos_ARCH_SNB=yes \
+cmake -D LAMMPS_MACHINE=cuda \
+      -D Kokkos_ARCH_SNB=yes \
       -D Kokkos_ARCH_PASCAL60=yes \
       -D Kokkos_ENABLE_CUDA=yes \
       -D Kokkos_ENABLE_OPENMP=yes \
+      -D Kokkos_ENABLE_SERIAL=yes \
+      -D BUILD_OMP=yes \
       -D CMAKE_CXX_FLAGS=-std=c++17 \
       -D CMAKE_CXX_COMPILER=$(realpath $(pwd)/../lib/kokkos/bin/nvcc_wrapper) \
       -D PKG_KOKKOS=yes \
@@ -54,7 +57,7 @@ cmake -D Kokkos_ARCH_SNB=yes \
       ../cmake/
 make -j 8
 ```
-Now `lmp` is built under `lammps/build`.
+Now `lmp_cuda` is built under `lammps/build`.
 
 #### With make
 Replace `8` with the appropriate number of cores:
@@ -64,7 +67,23 @@ KOKKOS_DEVICES=Cuda ./containers/install.sh 8
 You may need to change `Makefile.mlip_kokkos` for Kokkos options
 
 ### (1-2) Singularity without GPU
-**TODO**
+```shell
+cp -r src/USER-MLIP lammps/src
+cp containers/CMakeLists.txt lammps/cmake/CMakeLists.txt
+cd lammps
+mkdir build && cd build
+cmake -D LAMMPS_MACHINE=openmp \
+      -D Kokkos_ARCH_SNB=yes \
+      -D Kokkos_ENABLE_OPENMP=yes \
+      -D Kokkos_ENABLE_SERIAL=yes \
+      -D BUILD_OMP=yes \
+      -D CMAKE_CXX_FLAGS=-std=c++17 \
+      -D PKG_KOKKOS=yes \
+      -D PKG_MANYBODY=yes \
+      -D PKG_USER-MLIP=yes \
+      ../cmake/
+```
+Now `lmp_openmp` is built under `lammps/build`.
 
 ### (2-1) Docker with GPU
 1. Make sure your machine has a GPU and you install nvidia-driver.
@@ -140,7 +159,7 @@ pair_coeff * * pyml.lammps.mlip Ti Al
 ## Examples
 ```shell
 cd example
-export LAMMPS_BIN=$(realpath ../lammps/build/lmp)
+export LAMMPS_BIN=$(realpath ../lammps/build/lmp_cuda)
 ```
 
 Without Kokkos:
@@ -160,7 +179,7 @@ mpirun -np 1 ${LAMMPS_BIN} -in in.mlip -kokkos on gpus 2 -suffix kk -pk kokkos n
 
 1 node, 2 MPI tasks/node, 8 OpenMP threads/task
 ```shell
-mpirun -np 2 ${LAMMPS_BIN} -in in.mlip -kokkos on t 8 -suffix kk -pk kokkos neigh full newton on
+mpirun -np 2 ../lammps/build/lmp_openmp -in in.mlip -kokkos on t 8 -suffix kk -pk kokkos neigh full newton on
 ```
 
 ## Development
