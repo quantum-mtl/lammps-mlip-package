@@ -40,7 +40,7 @@ public:
     used for computing derivative of polynomial features.
     if a polynomial feature consists from one structural feature, return -1
     */
-    const int get_n_coeffs() const { return n_coeffs_; };
+    int get_n_coeffs() const { return n_coeffs_; };
 
     IrrepsTypeCombIdx get_irreps_type_idx(const FeatureIdx& fidx) const;
     int get_fn_idx(const FeatureIdx& fidx) const;
