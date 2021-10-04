@@ -40,8 +40,9 @@ Please change `Kokkos_ARCH_SNB` and `Kokkos_ARCH_PASCAL60` based on [architectur
 ```shell
 cp -r src/USER-MLIP lammps/src
 cp containers/CMakeLists.txt lammps/cmake/CMakeLists.txt
+cp containers/USER-MLIP.cmake lammps/cmake/Modules/Packages/.
 cd lammps
-mkdir build && cd build
+mkdir build_kokkos_cuda && cd build_kokkos_cuda
 cmake -D LAMMPS_MACHINE=cuda \
       -D Kokkos_ARCH_SNB=yes \
       -D Kokkos_ARCH_PASCAL60=yes \
@@ -57,7 +58,7 @@ cmake -D LAMMPS_MACHINE=cuda \
       ../cmake/
 make -j 8
 ```
-Now `lmp_cuda` is built under `lammps/build`.
+Now `lmp_cuda` is built under `lammps/build_kokkos_cuda`.
 
 #### With make
 Replace `8` with the appropriate number of cores:
@@ -70,8 +71,9 @@ You may need to change `Makefile.mlip_kokkos` for Kokkos options
 ```shell
 cp -r src/USER-MLIP lammps/src
 cp containers/CMakeLists.txt lammps/cmake/CMakeLists.txt
+cp containers/USER-MLIP.cmake lammps/cmake/Modules/Packages/.
 cd lammps
-mkdir build && cd build
+mkdir build_kokkos_openmp && cd build_kokkos_openmp
 cmake -D LAMMPS_MACHINE=openmp \
       -D Kokkos_ARCH_SNB=yes \
       -D Kokkos_ENABLE_OPENMP=yes \
@@ -83,7 +85,7 @@ cmake -D LAMMPS_MACHINE=openmp \
       -D PKG_USER-MLIP=yes \
       ../cmake/
 ```
-Now `lmp_openmp` is built under `lammps/build`.
+Now `lmp_openmp` is built under `lammps/build_kokkos_openmp`.
 
 ### (2-1) Docker with GPU
 1. Make sure your machine has a GPU and you install nvidia-driver.
