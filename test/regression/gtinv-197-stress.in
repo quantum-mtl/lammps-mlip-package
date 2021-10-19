@@ -1,0 +1,16 @@
+dimension 3
+units metal
+read_data structure.lammps
+
+pair_style  mlip_gtinv
+pair_coeff * * gtinv-197.mlip Ti Al
+
+compute 1 all pressure thermo_temp
+
+fix 1 all nve
+
+timestep 0.005
+thermo_style custom step temp epair emol etotal press vol pxx pyy pzz pxy pxz pyz
+thermo 50
+
+run 100

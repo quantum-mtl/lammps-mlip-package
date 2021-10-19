@@ -87,6 +87,26 @@ class RegressionTest(unittest.TestCase):
         self.assertAlmostEqual(initial_pressure_actual, initial_pressure_expect, delta=0.1)
 
 
+    def test_stress(self):
+        # use seko-sensei's stress tensor obtained from ev_tally as a reference
+        input_ = 'gtinv-197-stress.in'
+        log = 'log.lammps.gtinv-197.stress.ev_tally'
+        opt = self.lmp_option[2]
+        subprocess.run([self.lammps_path, '-in', input_, *opt])
+
+        # Compare stress info
+        with open('log.lammps', 'r') as f:
+            pxx_actual, pyy_actual, pzz_actual, pxy_actual, pxz_actual, pyz_actual = get_stress_info(f.read().splitlines())
+        with open(log, 'r') as f:
+            pxx_expect, pyy_expect, pzz_expect, pxy_expect, pxz_expect, pyz_expect = get_stress_info(f.read().splitlines())
+        self.assertAlmostEqual(pxx_actual, pxx_expect)
+        self.assertAlmostEqual(pyy_actual, pyy_expect)
+        self.assertAlmostEqual(pzz_actual, pzz_expect)
+        self.assertAlmostEqual(pxy_actual, pxy_expect)
+        self.assertAlmostEqual(pxz_actual, pxz_expect)
+        self.assertAlmostEqual(pyz_actual, pyz_expect)
+
+
 def get_atom_coords(lines):
     coords = []
     for line in lines[9:]:
@@ -109,6 +129,22 @@ def get_thermo_info(lines):
     thermo_info_line = lines[idx_after_thermo_info - 1]
     step, temperature, pair_energy, mol_energy, total_energy, pressure = tuple(map(float, re.split(r'\s+', thermo_info_line)[1:7]))
     return temperature, total_energy, pressure
+
+
+def get_stress_info(lines):
+    """
+    Parse 'Step Temp E_pair E_mol TotEng Press Volume Pxx Pyy Pzz Pxy Pxz Pyz'-lines in log.lammps
+    """
+    idx_after_thermo_info = None
+    for i, line in enumerate(lines):
+        if line.startswith("Loop time of"):
+            idx_after_thermo_info = i
+            break
+    assert idx_after_thermo_info >= 1
+
+    thermo_info_line = lines[idx_after_thermo_info - 1]
+    step, temperature, pair_energy, mol_energy, total_energy, pressure, volume, pxx, pyy, pzz, pxy, pxz, pyz = tuple(map(float, re.split(r'\s+', thermo_info_line)[1:14]))
+    return pxx, pyy, pzz, pxy, pxz, pyz
 
 
 if __name__ == '__main__':
