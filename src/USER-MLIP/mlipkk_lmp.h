@@ -76,6 +76,7 @@ class MLIPModelLMP : public MLIPModel {
 
   // defined here for LAMMPS interface
   void get_forces(PairStyle *fpair, NeighListKokkos *k_list);
+  vector1d get_stress();
 
  protected:
   /* Total number of owned and ghost atoms on this proc*/
@@ -841,6 +842,21 @@ void MLIPModelLMP<PairStyle, NeighListKokkos>::compute_forces_and_stress(NeighHa
                                                                          NewtonOn newton_pair,
                                                                          NeighListKokkos *k_list) {
   MLIPModel::compute_forces_and_stress();
+}
+
+template<class PairStyle, class NeighListKokkos>
+vector1d MLIPModelLMP<PairStyle, NeighListKokkos>::get_stress(){
+  stress_kk_.sync_host();
+
+  vector1d stress(6);
+  const auto h_stress = stress_kk_.view_host();
+  stress[0] = h_stress(0);  // xx
+  stress[1] = h_stress(1);  // yy
+  stress[2] = h_stress(2);  // zz
+  stress[3] = h_stress(5);  // xy
+  stress[4] = h_stress(4);  // xz
+  stress[5] = h_stress(3);  // yz
+  return stress;
 }
 
 // ----------------------------------------------------------------------------
