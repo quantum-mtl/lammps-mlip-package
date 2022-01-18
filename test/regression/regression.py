@@ -15,7 +15,7 @@ class RegressionTest(unittest.TestCase):
         self.lammps_path = os.path.join(os.path.dirname(__file__), '..', '..', 'lmp_mlip_kokkos')
         potential_list = [
             'pair-60',
-            'gtinv-197', 'gtinv-197',  # model_type=2
+            'gtinv-197',  # model_type=2
             'gtinv-820',  # model_type=3
             'gtinv-434',  # model_type=4
         ]
@@ -25,7 +25,6 @@ class RegressionTest(unittest.TestCase):
         if args.arch == 'OpenMP':
             self.lmp_option = [
                 [],
-                ['-sf', 'kk', '-k', 'on', 't', '2', '-pk', 'kokkos', 'neigh', 'half', 'newton', 'on'],
                 ['-sf', 'kk', '-k', 'on', 't', '2', '-pk', 'kokkos', 'neigh', 'full', 'newton', 'on'],
                 ['-sf', 'kk', '-k', 'on', 't', '2', '-pk', 'kokkos', 'neigh', 'full', 'newton', 'on'],
                 ['-sf', 'kk', '-k', 'on', 't', '2', '-pk', 'kokkos', 'neigh', 'full', 'newton', 'on'],
@@ -33,7 +32,6 @@ class RegressionTest(unittest.TestCase):
         elif args.arch == 'Cuda':
             self.lmp_option = [
                 [],
-                ['-sf', 'kk', '-k', 'on', 'g', '1', '-pk', 'kokkos', 'neigh', 'half', 'newton', 'on'],
                 ['-sf', 'kk', '-k', 'on', 'g', '1', '-pk', 'kokkos', 'neigh', 'full', 'newton', 'on'],
                 ['-sf', 'kk', '-k', 'on', 'g', '1', '-pk', 'kokkos', 'neigh', 'full', 'newton', 'on'],
                 ['-sf', 'kk', '-k', 'on', 'g', '1', '-pk', 'kokkos', 'neigh', 'full', 'newton', 'on'],
