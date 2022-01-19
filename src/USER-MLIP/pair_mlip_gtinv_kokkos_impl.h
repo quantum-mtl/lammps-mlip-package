@@ -236,40 +236,17 @@ void PairMLIPGtinvKokkos<DeviceType>::init_style() {
       kokkos_device = std::is_same<DeviceType, LMPDeviceType>::value;
 
   // Check flags:
-  // Only 'neigh full newton on' is allowed for MPI parallelization.
-  // Without MPI parallelization, 'neigh full newton on' and 'neigh half newton on' are allowed.
-  int nprocs;
-  MPI_Comm_size(world,&nprocs);
+  // Only 'neigh full newton on' is allowed.
   newton_pair = force->newton_pair;
-  if (nprocs==1){  // Without MPI
-    if (neighflag == FULL) {  // neigh full
-      if (newton_pair == 0) {  // newton off
-        error->all(FLERR, "Must use 'neigh half newton on' or 'neigh full newton on' with mlip_gtinv/kk");
-      } else {  // newton on
-        neighbor->requests[irequest]->full = 1;
-        neighbor->requests[irequest]->half = 0;
-      }
-    } else if (neighflag == HALF || neighflag == HALFTHREAD) {  // neigh half
-      if (newton_pair == 0) {  // newton off
-        error->all(FLERR, "Must use 'neigh half newton on' or 'neigh full newton on' with mlip_gtinv/kk");
-      } else {  // newton on
-        neighbor->requests[irequest]->full = 0;
-        neighbor->requests[irequest]->half = 1;
-      }
-    } else {
-      error->all(FLERR, "Must use 'neigh half newton on' or 'neigh full newton on' with mlip_gtinv/kk");
+  if (neighflag == FULL) {  // neigh full
+    if (newton_pair == 0) {  // newton off
+      error->all(FLERR, "Must use 'neigh full newton on' with mlip_gtinv/kk");
+    } else {  // newton on
+      neighbor->requests[irequest]->full = 1;
+      neighbor->requests[irequest]->half = 0;
     }
-  } else {  // With MPI
-    if (neighflag == FULL) {  // neigh full
-      if (newton_pair == 0) {  // newton off
-        error->all(FLERR, "Must use 'neigh half newton on' or 'neigh full newton on' with mlip_gtinv/kk");
-      } else {  // newton on
-        neighbor->requests[irequest]->full = 1;
-        neighbor->requests[irequest]->half = 0;
-      }
-    } else if (neighflag == HALF || neighflag == HALFTHREAD) {  // neigh half
-      error->all(FLERR, "Cannot (yet) use neigh half with MPI parallelization for mlip_gtinv/kk");
-    }
+  } else {  // neigh half
+    error->all(FLERR, "Cannot (yet) use neigh half with mlip_gtinv/kk; run with '-pk kokkos neigh full newton on'");
   }
 }
 

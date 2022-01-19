@@ -52,6 +52,7 @@ cmake -D LAMMPS_MACHINE=cuda \
       -D BUILD_OMP=yes \
       -D CMAKE_CXX_FLAGS=-std=c++17 \
       -D CMAKE_CXX_COMPILER=$(realpath $(pwd)/../lib/kokkos/bin/nvcc_wrapper) \
+      -D CMAKE_BUILD_TYPE=Release \
       -D PKG_KOKKOS=yes \
       -D PKG_MANYBODY=yes \
       -D PKG_USER-MLIP=yes \
@@ -80,6 +81,7 @@ cmake -D LAMMPS_MACHINE=openmp \
       -D Kokkos_ENABLE_SERIAL=yes \
       -D BUILD_OMP=yes \
       -D CMAKE_CXX_FLAGS=-std=c++17 \
+      -D CMAKE_BUILD_TYPE=Release \
       -D PKG_KOKKOS=yes \
       -D PKG_MANYBODY=yes \
       -D PKG_USER-MLIP=yes \
@@ -92,7 +94,7 @@ Now `lmp_openmp` is built under `lammps/build_kokkos_openmp`.
 2. Make sure you install docker and [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html#docker).
 ```shell
 docker build -t lammps-gpu -f containers/Dockerfile.gpu .
-docker run -it -v $(pwd):/workspace -t lammps-gpu
+docker run --gpus all -it -v $(pwd):/workspace -t lammps-gpu
 ```
 
 3. Build LAMMPS in `mlip` container
@@ -205,6 +207,7 @@ cmake -D LAMMPS_MACHINE=cuda \
       -D BUILD_SHARED_LIBS=yes \
       -D CMAKE_CXX_FLAGS=-std=c++17 \
       -D CMAKE_CXX_COMPILER=$(realpath $(pwd)/../lib/kokkos/bin/nvcc_wrapper) \
+      -D CMAKE_BUILD_TYPE=Release \
       -D PKG_PYTHON=yes \
       -D PKG_KOKKOS=yes \
       -D PKG_MANYBODY=yes \
@@ -226,7 +229,7 @@ python3
 ```python
 from lammps import PyLammps
 # load `liblammps_{name}.so`
-cmdargs = ['-log', 'none', '-kokkos', 'on', 'gpus', '1', '-suffix', 'kk', '-pk', 'kokkos', 'neigh', 'half', 'newton', 'on']
+cmdargs = ['-log', 'none', '-kokkos', 'on', 'gpus', '1', '-suffix', 'kk', '-pk', 'kokkos', 'neigh', 'full', 'newton', 'on']
 l = PyLammps(name='cuda', cmdargs=cmdargs)
 
 # run simulation
