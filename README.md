@@ -207,6 +207,7 @@ cmake -D LAMMPS_MACHINE=cuda \
       -D BUILD_SHARED_LIBS=yes \
       -D CMAKE_CXX_FLAGS=-std=c++17 \
       -D CMAKE_CXX_COMPILER=$(realpath $(pwd)/../lib/kokkos/bin/nvcc_wrapper) \
+      -D CMAKE_BUILD_TYPE=Release \
       -D PKG_PYTHON=yes \
       -D PKG_KOKKOS=yes \
       -D PKG_MANYBODY=yes \
@@ -228,7 +229,7 @@ python3
 ```python
 from lammps import PyLammps
 # load `liblammps_{name}.so`
-cmdargs = ['-log', 'none', '-kokkos', 'on', 'gpus', '1', '-suffix', 'kk', '-pk', 'kokkos', 'neigh', 'half', 'newton', 'on']
+cmdargs = ['-log', 'none', '-kokkos', 'on', 'gpus', '1', '-suffix', 'kk', '-pk', 'kokkos', 'neigh', 'full', 'newton', 'on']
 l = PyLammps(name='cuda', cmdargs=cmdargs)
 
 # run simulation
