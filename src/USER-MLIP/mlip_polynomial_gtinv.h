@@ -24,17 +24,16 @@
 #ifndef __MLIP_POLYNOMIAL_GTINV
 #define __MLIP_POLYNOMIAL_GTINV
 
-#include <set>
-#include <map>
-#include <iterator>
 #include <algorithm>
+#include <iterator>
+#include <map>
+#include <set>
 
-#include "mlip_pymlcpp.h"
 #include "mlip_model_params.h"
 #include "mlip_polynomial.h"
+#include "mlip_pymlcpp.h"
 
-class PolynomialGtinv{
-
+class PolynomialGtinv {
     Polynomial poly_obj;
 
     int n_tc, n_fn, n_des, n_lm_all;
@@ -45,28 +44,24 @@ class PolynomialGtinv{
     vector2GL gtinv_all;
     vector4GPL poly_array;
 
-    void set_uniq_lmt_prod
-        (const struct feature_params& fp, const ModelParams& modelp);
+    void set_uniq_lmt_prod(const struct feature_params& fp,
+                           const ModelParams& modelp);
     void set_gtinv(const struct feature_params& fp, const ModelParams& modelp);
 
     void set_uniq_comb(const vector2i& comb_all);
     void set_polynomial_array(const vector2i& comb_all, const int& sindex);
     void gtinv_extract();
 
-    public: 
-
+   public:
     PolynomialGtinv();
-    PolynomialGtinv
-        (const struct feature_params& fp, const ModelParams& modelp,
-         const vector2i& lm_info);
+    PolynomialGtinv(const struct feature_params& fp, const ModelParams& modelp,
+                    const vector2i& lm_info);
     ~PolynomialGtinv();
 
-    const vector1GL& get_gtinv_info
-        (const int& tc0, const int& lm0) const;
-    const vector1GL& get_gtinv_info_poly
-        (const int& tc0, const int& lm0) const;
-    const vector1GPL& get_polynomial_info
-        (const int& tc0, const int& n0, const int& lm0) const;
+    const vector1GL& get_gtinv_info(const int& tc0, const int& lm0) const;
+    const vector1GL& get_gtinv_info_poly(const int& tc0, const int& lm0) const;
+    const vector1GPL& get_polynomial_info(const int& tc0, const int& n0,
+                                          const int& lm0) const;
     const vector2i& get_uniq_prod() const;
     const vector2i& get_uniq_comb() const;
     const vector2i& get_lmtc_map() const;

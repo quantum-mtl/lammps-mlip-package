@@ -24,13 +24,13 @@
 #ifndef __MLIP_POLYNOMIAL
 #define __MLIP_POLYNOMIAL
 
-#include <set>
-#include <map>
-#include <iterator>
 #include <algorithm>
+#include <iterator>
+#include <map>
+#include <set>
 
-#include "mlip_pymlcpp.h"
 #include "mlip_model_params.h"
+#include "mlip_pymlcpp.h"
 
 typedef std::vector<struct PolynomialLammps> polyvec1;
 typedef std::vector<polyvec1> polyvec2;
@@ -68,34 +68,30 @@ struct GtinvPolynomialLammps {
     int order;
 };
 
-class Polynomial{
-
+class Polynomial {
     int n_tc, n_fn, n_lm_all, n_gtinv;
     vector2i swap_rule, swap_map_poly, swap_map_lmtc, swap_map_gtinv, lmtc_map;
-    vector2i comb2,comb3;
+    vector2i comb2, comb3;
 
     void set_swap_map_tcn();
     void set_swap_map_lmtc();
-    void set_swap_map_gtinv
-        (const struct feature_params fp, const ModelParams& modelp);
+    void set_swap_map_gtinv(const struct feature_params fp,
+                            const ModelParams& modelp);
     void set_swap_map_ngtinv();
     void set_lmtc_map();
 
-    vector1i tc_array_swap
-        (const int& tc0, const vector1i& tc_array, const vector1i& lc_array);
+    vector1i tc_array_swap(const int& tc0, const vector1i& tc_array,
+                           const vector1i& lc_array);
 
-    public: 
-
+   public:
     Polynomial();
-    Polynomial
-        (const struct feature_params& fp, const ModelParams& modelp, 
-         const vector2i& lm_info);
+    Polynomial(const struct feature_params& fp, const ModelParams& modelp,
+               const vector2i& lm_info);
     ~Polynomial();
 
-    int find_comb
-        (const std::set<vector1i>& uniq_comb_set,
-         const vector1i& comb_i, const int& s);
-    vector2i permutation(const int& order); 
+    int find_comb(const std::set<vector1i>& uniq_comb_set,
+                  const vector1i& comb_i, const int& s);
+    vector2i permutation(const int& order);
 
     int tcn2seq(const int& tc, const int& n);
     int lmtc2seq(const int& lm, const int& tc);

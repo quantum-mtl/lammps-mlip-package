@@ -1,9 +1,9 @@
 #include "mlipkk_cell.h"
 
-#include <vector>
+#include <cassert>
 #include <cmath>
 #include <iostream>
-#include <cassert>
+#include <vector>
 
 #include "mlipkk_types.h"
 
@@ -13,8 +13,8 @@ namespace MLIP_NS {
 // NBin class
 // ----------------------------------------------------------------------------
 
-NBin::NBin(const std::vector<std::vector<double>>& lattice, const double cutoff) : OUTSIDE(-1)
-{
+NBin::NBin(const std::vector<std::vector<double>>& lattice, const double cutoff)
+    : OUTSIDE(-1) {
     const double lx = norm(lattice[0][0], lattice[0][1], lattice[0][2]);
     const double ly = norm(lattice[1][0], lattice[1][1], lattice[1][2]);
     const double lz = norm(lattice[2][0], lattice[2][1], lattice[2][2]);
@@ -48,7 +48,8 @@ NBin::NBin(const std::vector<std::vector<double>>& lattice, const double cutoff)
     mbins_ = mbinx_ * mbiny_ * mbinz_;
 }
 
-void NBin::bin_atoms(const std::vector<std::vector<double>>& coords_with_ghosts) {
+void NBin::bin_atoms(
+    const std::vector<std::vector<double>>& coords_with_ghosts) {
     const int nall = static_cast<int>(coords_with_ghosts.size());
 
     bins_ = std::vector<std::vector<PeriodicSiteIdx>>(mbins_);
@@ -64,7 +65,8 @@ void NBin::bin_atoms(const std::vector<std::vector<double>>& coords_with_ghosts)
 }
 
 BinIdx NBin::hash_bin(const int binx, const int biny, const int binz) const {
-    return (binz - mbinzlo_) * mbiny_ * mbinx_ + (biny - mbinylo_) * mbinx_ + (binx - mbinxlo_);
+    return (binz - mbinzlo_) * mbiny_ * mbinx_ + (biny - mbinylo_) * mbinx_ +
+           (binx - mbinxlo_);
 };
 
 BinIdx NBin::coords2bin(const std::vector<double>& xyz) const {
@@ -72,10 +74,8 @@ BinIdx NBin::coords2bin(const std::vector<double>& xyz) const {
     const int biny = static_cast<int>(floor(xyz[1] / binsizey_));
     const int binz = static_cast<int>(floor(xyz[2] / binsizez_));
 
-    if ((binx >= mbinxlo_) && (binx <= mbinxhi_)
-        && (biny >= mbinylo_) && (biny <= mbinyhi_)
-        && (binz >= mbinzlo_) && (binz <= mbinzhi_)
-    ) {
+    if ((binx >= mbinxlo_) && (binx <= mbinxhi_) && (biny >= mbinylo_) &&
+        (biny <= mbinyhi_) && (binz >= mbinzlo_) && (binz <= mbinzhi_)) {
         return hash_bin(binx, biny, binz);
     } else {
         return OUTSIDE;
@@ -94,23 +94,24 @@ std::vector<int> NBin::get_mbinhi() const {
     return std::vector<int>{mbinxhi_, mbinyhi_, mbinzhi_};
 }
 
-int NBin::get_mbins() const {
-    return mbins_;
-}
+int NBin::get_mbins() const { return mbins_; }
 
-const std::vector<PeriodicSiteIdx>& NBin::get_atoms_within_bin(const BinIdx ibin) const {
+const std::vector<PeriodicSiteIdx>& NBin::get_atoms_within_bin(
+    const BinIdx ibin) const {
     return bins_[ibin];
 }
 
-BinIdx NBin::get_binidx(const PeriodicSiteIdx i) const {
-    return atom2bin_[i];
-}
+BinIdx NBin::get_binidx(const PeriodicSiteIdx i) const { return atom2bin_[i]; }
 
 void NBin::dump(std::ostream& os) const {
-    os << "Bin sizes: " << binsizex_ << " " << binsizey_ << " " << binsizez_ << std::endl;
-    os << "Global bins: " << nbinx_ << " " << nbiny_ << " " << nbinz_ << std::endl;
-    os << "Lowest local bin : " << mbinxlo_ << " " << mbinylo_ << " " << mbinzlo_ << std::endl;
-    os << "Highest local bin: " << mbinxhi_ << " " << mbinyhi_ << " " << mbinzhi_ << std::endl;
+    os << "Bin sizes: " << binsizex_ << " " << binsizey_ << " " << binsizez_
+       << std::endl;
+    os << "Global bins: " << nbinx_ << " " << nbiny_ << " " << nbinz_
+       << std::endl;
+    os << "Lowest local bin : " << mbinxlo_ << " " << mbinylo_ << " "
+       << mbinzlo_ << std::endl;
+    os << "Highest local bin: " << mbinxhi_ << " " << mbinyhi_ << " "
+       << mbinzhi_ << std::endl;
     os << "mbins: " << mbins_ << std::endl;
 }
 
@@ -135,18 +136,16 @@ NStencilHalf::NStencilHalf(const NBin& nbin) {
                 for (int iz = -1; iz <= 1; ++iz) {
                     for (int iy = -1; iy <= 1; ++iy) {
                         for (int ix = -1; ix <= 1; ++ix) {
-                            if ((iz == 1)
-                                || ((iz == 0) && (iy == 1))
-                                || ((iz == 0) && (iy == 0) && (ix >= 0)))
-                            {
+                            if ((iz == 1) || ((iz == 0) && (iy == 1)) ||
+                                ((iz == 0) && (iy == 0) && (ix >= 0))) {
                                 const int bx = binx + ix;
                                 const int by = biny + iy;
                                 const int bz = binz + iz;
-                                if ((bx >= nbin_lo[0]) && (bx <= nbin_hi[0])
-                                    && (by >= nbin_lo[1]) && (by <= nbin_hi[1])
-                                    && (bz >= nbin_lo[2]) && (bz <= nbin_hi[2]))
-                                {
-                                    const BinIdx ibin_next = nbin.hash_bin(bx, by, bz);
+                                if ((bx >= nbin_lo[0]) && (bx <= nbin_hi[0]) &&
+                                    (by >= nbin_lo[1]) && (by <= nbin_hi[1]) &&
+                                    (bz >= nbin_lo[2]) && (bz <= nbin_hi[2])) {
+                                    const BinIdx ibin_next =
+                                        nbin.hash_bin(bx, by, bz);
                                     stencils_[ibin].emplace_back(ibin_next);
                                 }
                             }
@@ -194,11 +193,11 @@ NStencilFull::NStencilFull(const NBin& nbin) {
                             const int bx = binx + ix;
                             const int by = biny + iy;
                             const int bz = binz + iz;
-                            if ((bx >= nbin_lo[0]) && (bx <= nbin_hi[0])
-                                && (by >= nbin_lo[1]) && (by <= nbin_hi[1])
-                                && (bz >= nbin_lo[2]) && (bz <= nbin_hi[2]))
-                            {
-                                const BinIdx ibin_next = nbin.hash_bin(bx, by, bz);
+                            if ((bx >= nbin_lo[0]) && (bx <= nbin_hi[0]) &&
+                                (by >= nbin_lo[1]) && (by <= nbin_hi[1]) &&
+                                (bz >= nbin_lo[2]) && (bz <= nbin_hi[2])) {
+                                const BinIdx ibin_next =
+                                    nbin.hash_bin(bx, by, bz);
                                 stencils_[ibin].emplace_back(ibin_next);
                             }
                         }
@@ -216,9 +215,9 @@ const std::vector<BinIdx> NStencilFull::get_stencil(const BinIdx ibin) const {
 // getting neighbors
 // ----------------------------------------------------------------------------
 
-void get_neighbors(const vector2d& coords, const vector2d& lattice, const double cutoff,
-                   vector3d& displacements, vector2i& neighbors)
-{
+void get_neighbors(const vector2d& coords, const vector2d& lattice,
+                   const double cutoff, vector3d& displacements,
+                   vector2i& neighbors) {
     NBin nbin(lattice, cutoff);
     // NStencilHalf nstencil(nbin);
     NStencilFull nstencil(nbin);
@@ -252,10 +251,14 @@ void get_neighbors(const vector2d& coords, const vector2d& lattice, const double
                     continue;
                 }
                 for (int i = 0; i < nlocal; ++i) {
-                    const double x = coords[i][0] + nx * lattice[0][0] + ny * lattice[1][0] + nz * lattice[2][0];
-                    const double y = coords[i][1] + nx * lattice[0][1] + ny * lattice[1][1] + nz * lattice[2][1];
-                    const double z = coords[i][2] + nx * lattice[0][2] + ny * lattice[1][2] + nz * lattice[2][2];
-                    coords_with_ghosts.emplace_back(std::vector<double>{x, y, z});
+                    const double x = coords[i][0] + nx * lattice[0][0] +
+                                     ny * lattice[1][0] + nz * lattice[2][0];
+                    const double y = coords[i][1] + nx * lattice[0][1] +
+                                     ny * lattice[1][1] + nz * lattice[2][1];
+                    const double z = coords[i][2] + nx * lattice[0][2] +
+                                     ny * lattice[1][2] + nz * lattice[2][2];
+                    coords_with_ghosts.emplace_back(
+                        std::vector<double>{x, y, z});
                     origin_atom_mapping.emplace_back(i);
                 }
             }
@@ -303,18 +306,19 @@ void get_neighbors(const vector2d& coords, const vector2d& lattice, const double
     }
 }
 
-
 /// this O(N^2) function is left for testing purpose.
-void get_neighbors_old(const vector2d& coords, const vector2d& lattice, const double cutoff,
-                       vector3d& displacements, vector2i& neighbors)
-{
+void get_neighbors_old(const vector2d& coords, const vector2d& lattice,
+                       const double cutoff, vector3d& displacements,
+                       vector2i& neighbors) {
     int inum = static_cast<int>(coords.size());
     displacements.resize(inum);
     neighbors.resize(inum);
 
     std::vector<int> bounds(3);
     for (int i = 0; i < 3; ++i) {
-        double length = sqrt(lattice[i][0] * lattice[i][0] + lattice[i][1] * lattice[i][1] + lattice[i][2] * lattice[i][2]);
+        double length =
+            sqrt(lattice[i][0] * lattice[i][0] + lattice[i][1] * lattice[i][1] +
+                 lattice[i][2] * lattice[i][2]);
         bounds[i] = static_cast<int>(ceil(length / cutoff));
     }
 
@@ -324,7 +328,8 @@ void get_neighbors_old(const vector2d& coords, const vector2d& lattice, const do
             for (int nz = -bounds[2]; nz <= bounds[2]; ++nz) {
                 std::vector<double> offset(3, 0.0);
                 for (int i = 0; i < 3; ++i) {
-                    offset[i] += lattice[0][i] * nx + lattice[1][i] * ny + lattice[2][i] * nz;
+                    offset[i] += lattice[0][i] * nx + lattice[1][i] * ny +
+                                 lattice[2][i] * nz;
                 }
                 offsets.emplace_back(offset);
             }
@@ -338,17 +343,19 @@ void get_neighbors_old(const vector2d& coords, const vector2d& lattice, const do
             for (int x = 0; x < 3; ++x) {
                 rij[x] = coords[j][x] - coords[i][x];
             }
-            for (auto offset: offsets) {
+            for (auto offset : offsets) {
                 std::vector<double> disp(rij);
                 for (int x = 0; x < 3; ++x) {
                     disp[x] += offset[x];
                 }
 
-                if ((fabs(disp[0]) > cutoff) || (fabs(disp[1]) > cutoff) || (fabs(disp[2]) > cutoff)) {
+                if ((fabs(disp[0]) > cutoff) || (fabs(disp[1]) > cutoff) ||
+                    (fabs(disp[2]) > cutoff)) {
                     continue;
                 }
 
-                double length2 = disp[0] * disp[0] + disp[1] * disp[1] + disp[2] * disp[2];
+                double length2 =
+                    disp[0] * disp[0] + disp[1] * disp[1] + disp[2] * disp[2];
 
                 // same site
                 if ((i == j) && (length2 < 1e-8)) {
@@ -367,4 +374,4 @@ void get_neighbors_old(const vector2d& coords, const vector2d& lattice, const do
     }
 }
 
-} // namespace MLIP_NS
+}  // namespace MLIP_NS

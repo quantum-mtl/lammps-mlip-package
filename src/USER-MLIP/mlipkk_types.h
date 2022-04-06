@@ -24,8 +24,8 @@
 #ifndef MLIPKK_TYPES_H_
 #define MLIPKK_TYPES_H_
 
-#include <vector>
 #include <complex>
+#include <vector>
 
 namespace MLIP_NS {
 
@@ -34,7 +34,7 @@ enum DesTypeId : int {
     PAIR = 1,
 };
 
-enum PairTypeId: int {
+enum PairTypeId : int {
     GAUSSIAN = 0,
 };
 
@@ -59,7 +59,8 @@ using IrrepsTermIdx = int;
 
 /* index for tuple of (IrrepsIdx, TypeCombIdx) */
 using IrrepsTypeCombIdx = int;
-/* index for structural features, (IrrepsTypeCombIdx, index of radial basis function)*/
+/* index for structural features, (IrrepsTypeCombIdx, index of radial basis
+ * function)*/
 using FeatureIdx = int;
 /* index for polynomial features */
 using PolynomialIdx = int;
@@ -82,5 +83,5 @@ using vector3dc = std::vector<vector2dc>;
 using vector4dc = std::vector<vector3dc>;
 using vector5dc = std::vector<vector4dc>;
 
-} // namespace MLIP_NS
-#endif // MLIPKK_TYPES_H_
+}  // namespace MLIP_NS
+#endif  // MLIPKK_TYPES_H_

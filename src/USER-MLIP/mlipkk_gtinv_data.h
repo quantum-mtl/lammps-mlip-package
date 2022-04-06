@@ -19,7 +19,7 @@
         Fifth Floor, Boston, MA 02110-1301, USA, or see
         http://www.gnu.org/copyleft/gpl.txt
 
-	    Header file for GtinvData.cpp
+            Header file for GtinvData.cpp
 
 ****************************************************************************/
 
@@ -30,14 +30,14 @@
 
 namespace MLIP_NS {
 
-class GtinvDataKK{
+class GtinvDataKK {
     vector2i l_array_all;
     vector3i m_array_all;
     vector2d coeffs_all;
 
-public:
+   public:
     GtinvDataKK();
-   ~GtinvDataKK() = default;
+    ~GtinvDataKK() = default;
 
     /*
     Table of sets of angular numbers corresponding to all symmetry Irreps.
@@ -53,13 +53,14 @@ public:
     */
     const vector3i& get_m_array() const { return m_array_all; };
     /*
-    coeffs_all[i] is table of generalized Clebsch-Gordon coefficients for l_array_all[i]
+    coeffs_all[i] is table of generalized Clebsch-Gordon coefficients for
+    l_array_all[i]
     */
     const vector2d& get_coeffs() const { return coeffs_all; };
 
-private:
+   private:
     void set_gtinv_info();
 };
 
-} // namespace MLIP_NS
-#endif // MLIPKK_GTINV_DATA_H_
+}  // namespace MLIP_NS
+#endif  // MLIPKK_GTINV_DATA_H_

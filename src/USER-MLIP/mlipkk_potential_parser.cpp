@@ -1,21 +1,21 @@
 #include "mlipkk_potential_parser.h"
 
-#include <iostream>
-#include <fstream>
 #include <cassert>
 #include <cstring>
+#include <fstream>
+#include <iostream>
 
-#include "mlipkk_utils.h"
 #include "mlipkk_irreps_type.h"
 #include "mlipkk_polynomial.h"
+#include "mlipkk_utils.h"
 
 namespace MLIP_NS {
 
-void read_potential_file(const char* file, std::vector<std::string>& ele, vector1d& mass,
-                         MLIPInput* fp, vector1d& reg_coeffs, Readgtinv& gtinvdata)
-{
+void read_potential_file(const char* file, std::vector<std::string>& ele,
+                         vector1d& mass, MLIPInput* fp, vector1d& reg_coeffs,
+                         Readgtinv& gtinvdata) {
     std::ifstream input(file);
-    if (input.fail()){
+    if (input.fail()) {
         std::cerr << "Error: Could not open mlip file: " << file << std::endl;
         exit(8);
     }
@@ -27,7 +27,7 @@ void read_potential_file(const char* file, std::vector<std::string>& ele, vector
     ele.clear();
     std::getline(input, line);
     ss << line;
-    while (!ss.eof()){
+    while (!ss.eof()) {
         ss >> tmp;
         ele.push_back(tmp);
     }
@@ -102,16 +102,17 @@ void read_potential_file(const char* file, std::vector<std::string>& ele, vector
     mass = get_value_array<double>(input, static_cast<int>(ele.size()));
 
     gtinvdata = Readgtinv(gtinv_order, gtinv_maxl, gtinv_sym);
-
 }
 
 int get_num_coeffs(const MLIPInput& input, const Readgtinv& gtinvdata) {
     const int n_fn = static_cast<int>(input.params.size());
     const auto& l_array = gtinvdata.get_l_comb();
-    const auto irreps_type_pairs = get_unique_irreps_type_pairs(input.n_type, l_array);
-    const MLIPPolynomial poly(input.model_type, input.maxp, n_fn, input.n_type, irreps_type_pairs);
+    const auto irreps_type_pairs =
+        get_unique_irreps_type_pairs(input.n_type, l_array);
+    const MLIPPolynomial poly(input.model_type, input.maxp, n_fn, input.n_type,
+                              irreps_type_pairs);
     int num_coeffs = static_cast<int>(poly.get_n_coeffs());
     return num_coeffs;
 }
 
-} // namespace MLIP_NS
+}  // namespace MLIP_NS

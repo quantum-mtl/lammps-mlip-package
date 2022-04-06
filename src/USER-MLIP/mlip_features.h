@@ -27,8 +27,8 @@
 #include <boost/geometry.hpp>
 #include <boost/math/special_functions/spherical_harmonic.hpp>
 
-#include "mlip_pymlcpp.h"
 #include "mlip_basis_function.h"
+#include "mlip_pymlcpp.h"
 
 namespace bg = boost::geometry;
 namespace bm = boost::math;
@@ -36,22 +36,20 @@ namespace bm = boost::math;
 // radial functions
 void get_fn(const double& dis, const struct feature_params& fp, vector1d& fn);
 
-void get_fn
-(const double& dis, const struct feature_params& fp,
- vector1d& fn, vector1d& fn_dr);
+void get_fn(const double& dis, const struct feature_params& fp, vector1d& fn,
+            vector1d& fn_dr);
 
 // Spherical harmonics
 vector1d cartesian_to_spherical(const vector1d& v);
 
 void get_ylm(const vector1d& sph, const vector2i& lm_info, vector1dc& ylm);
 
-void get_ylm
-(const vector1d& sph, const vector2i& lm_info,
- vector1dc& ylm, vector1dc& ylm_dtheta);
+void get_ylm(const vector1d& sph, const vector2i& lm_info, vector1dc& ylm,
+             vector1dc& ylm_dtheta);
 
-dc spherical_harmonic_dtheta
-(const int& l, const int& m, const double& tan_theta,
- const dc& exp_imag_phi, const vector1dc& ylm, const int& lm);
+dc spherical_harmonic_dtheta(const int& l, const int& m,
+                             const double& tan_theta, const dc& exp_imag_phi,
+                             const vector1dc& ylm, const int& lm);
 
 vector2i get_lm_info_table(const int& max_l);
 

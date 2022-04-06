@@ -24,7 +24,7 @@
 #include "mlip_read_gtinv.h"
 
 Readgtinv::Readgtinv(const int& gtinv_order, const vector1i& gtinv_maxl,
-                     const std::vector<bool>& gtinv_sym){
+                     const std::vector<bool>& gtinv_sym) {
     screening(gtinv_order, gtinv_maxl, gtinv_sym);
 }
 
@@ -33,18 +33,18 @@ Readgtinv::Readgtinv(const int& gtinv_order, const vector1i& gtinv_maxl,
 /// @param[in] gtinv_maxl vector of l_max for order = 2, 3, ...
 /// @param[in] gtinv_sym
 void Readgtinv::screening(const int& gtinv_order, const vector1i& gtinv_maxl,
-                          const std::vector<bool>& gtinv_sym){
+                          const std::vector<bool>& gtinv_sym) {
     MLIP_NS::GtinvData data;
     const vector2i l_array_all = data.get_l_array();
     const vector3i m_array_all = data.get_m_array();
     const vector2d coeffs_all = data.get_coeffs();
 
-    for (int i = 0; i < l_array_all.size(); ++i){
-        const vector1i &lcomb = l_array_all[i];
-        bool is_required(true);  // flag whether to fetch from GtinvData
+    for (int i = 0; i < l_array_all.size(); ++i) {
+        const vector1i& lcomb = l_array_all[i];
+        bool is_required(true);          // flag whether to fetch from GtinvData
         const int order = lcomb.size();  // number of angular momemtums
         const int maxl = *(lcomb.end() - 1);
-        if (order > 1){
+        if (order > 1) {
             if ((order > gtinv_order) or (maxl > gtinv_maxl[order - 2])) {
                 is_required = false;
             }
@@ -56,11 +56,11 @@ void Readgtinv::screening(const int& gtinv_order, const vector1i& gtinv_maxl,
             }
         }
 
-        if (is_required == true){
+        if (is_required == true) {
             vector2i vec1(m_array_all[i].size(), vector1i(order));
-            for (int j = 0; j < m_array_all[i].size(); ++j){
-                const auto &mcomb = m_array_all[i][j];
-                for (int k = 0; k < order; ++k){
+            for (int j = 0; j < m_array_all[i].size(); ++j) {
+                const auto& mcomb = m_array_all[i][j];
+                for (int k = 0; k < order; ++k) {
                     int l = lcomb[k];
                     int m = mcomb[k];
                     vec1[j][k] = l * l + l + m;
@@ -73,6 +73,6 @@ void Readgtinv::screening(const int& gtinv_order, const vector1i& gtinv_maxl,
     }
 }
 
-const vector3i& Readgtinv::get_lm_seq() const{ return lm_array; }
-const vector2i& Readgtinv::get_l_comb() const{ return l_array; }
-const vector2d& Readgtinv::get_lm_coeffs() const{ return coeffs; }
+const vector3i& Readgtinv::get_lm_seq() const { return lm_array; }
+const vector2i& Readgtinv::get_l_comb() const { return l_array; }
+const vector2d& Readgtinv::get_lm_coeffs() const { return coeffs; }

@@ -33,5 +33,5 @@ double gauss(const double& dis, const double& beta, const double& mu);
 void gauss_d(const double& dis, const double& beta, const double& mu,
              double& bf, double& bf_d);
 
-} // namespace MLIP_NS
-#endif // MLIPKK_BASIS_FUNCTION_H_
+}  // namespace MLIP_NS
+#endif  // MLIPKK_BASIS_FUNCTION_H_
