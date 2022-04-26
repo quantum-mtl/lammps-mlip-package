@@ -4,19 +4,19 @@
 #include <iostream>
 #include <vector>
 
-#include "mlipkk_types.h"
+#include "mlipkk_features.h"
+#include "mlipkk_gtinv_data_reader.h"
 #include "mlipkk_irreps_type.h"
 #include "mlipkk_polynomial.h"
-#include "mlipkk_features.h"
-#include "mlipkk_spherical_harmonics.h"
-#include "mlipkk_gtinv_data_reader.h"
 #include "mlipkk_potential_parser.h"
+#include "mlipkk_spherical_harmonics.h"
+#include "mlipkk_types.h"
 #include "mlipkk_types_kokkos.h"
 
 namespace MLIP_NS {
 
 class MLIPModel {
-protected:
+   protected:
     // ------------------------------------------------------------------------
     // Input parameters
     // ------------------------------------------------------------------------
@@ -53,10 +53,11 @@ protected:
     /* d_irreps_type_combs_(itcidx: IrrepsTypeCombIdx) is list of TypeCombs */
     StaticCrsGraph d_irreps_type_combs_;
     /*
-    irreps_type_intersection(itcidx: IrrepsTypeCombIdx, type: ElementType) is true
-    iff all `type_combs` contain `type`.
+    irreps_type_intersection(itcidx: IrrepsTypeCombIdx, type: ElementType) is
+    true iff all `type_combs` contain `type`.
     */
-    dview_2b irreps_type_intersection_ = dview_2b("irreps_type_intersection_", 0, 0);
+    dview_2b irreps_type_intersection_ =
+        dview_2b("irreps_type_intersection_", 0, 0);
     /* irreps_type_mapping_: IrrepsTypeCombIdx -> IrrepsIdx */
     dview_1i irreps_type_mapping_ = dview_1i("irreps_type_mapping_", 0);
     /* irreps_first_term_: IrrepsIdx -> IrrepsTermIdx */
@@ -93,20 +94,23 @@ protected:
     /* neighbor_pair_index_[npidx: NeighborPairIdx] = (i, j) */
     dview_1p neighbor_pair_index_kk_ = dview_1p("neighbor_pair_index_kk_", 0);
     /* neighbor_pair_displacements_[npidx: NeighborPairIdx][3] */
-    dview_2d neighbor_pair_displacements_kk_ = dview_2d("neighbor_pair_displacements_kk_", 0, 0);
+    dview_2d neighbor_pair_displacements_kk_ =
+        dview_2d("neighbor_pair_displacements_kk_", 0, 0);
     /* neighbor_pair_typecomb_kk_: NeighborPairIdx -> TypeCombIdx */
-    dview_1i neighbor_pair_typecomb_kk_ = dview_1i("neighbor_pair_typecomb_kk_", 0);
+    dview_1i neighbor_pair_typecomb_kk_ =
+        dview_1i("neighbor_pair_typecomb_kk_", 0);
     /* types_kk_: NeighborPairIdx -> ElementType */
     dview_1i types_kk_ = dview_1i("types_kk_", 0);
 
-    view_1d d_distance_= view_1d("d_distance_", 0);
-    view_2d d_fn_= view_2d("d_fn_", 0, 0);
-    view_2d d_fn_der_= view_2d("d_fn_der_", 0, 0);
+    view_1d d_distance_ = view_1d("d_distance_", 0);
+    view_2d d_fn_ = view_2d("d_fn_", 0, 0);
+    view_2d d_fn_der_ = view_2d("d_fn_der_", 0, 0);
     /* normalized associated Legendre polynomial (ALP) for neighbors */
     view_2d d_alp_ = view_2d("d_alp_", 0, 0);
-    /* normalized associated Legendre polynomial (ALP) devided by sin theta for neighbors */
+    /* normalized associated Legendre polynomial (ALP) devided by sin theta for
+     * neighbors */
     view_2d d_alp_sintheta_ = view_2d("d_alp_sintheta_", 0, 0);
-    view_2dc d_ylm_= view_2dc("ylm_kk_", 0, 0);
+    view_2dc d_ylm_ = view_2dc("ylm_kk_", 0, 0);
     view_2dc d_ylm_dx_ = view_2dc("d_ylm_dx_", 0, 0);
     view_2dc d_ylm_dy_ = view_2dc("d_ylm_dy_", 0, 0);
     view_2dc d_ylm_dz_ = view_2dc("d_ylm_dz_", 0, 0);
@@ -114,13 +118,16 @@ protected:
     view_4d d_anlm_r_ = view_4d("d_anlm_r_", 0, 0, 0, 0);
     view_4d d_anlm_i_ = view_4d("d_anlm_i_", 0, 0, 0, 0);
     /* order parameters, (inum_, n_types, n_fn_, n_lm_all) */
-    view_4dc d_anlm_= view_4dc("d_anlm_", 0, 0, 0, 0);
+    view_4dc d_anlm_ = view_4dc("d_anlm_", 0, 0, 0, 0);
     /* O(3)-invariant features, (inum_, n_des_) */
-    dview_2d structural_features_kk_ = dview_2d("structural_features_kk_", 0, 0);
-    /* polynomial_adjoints_[i][fidx: FeatureIdx] adjoint of structural feature `fidx` of atom i */
+    dview_2d structural_features_kk_ =
+        dview_2d("structural_features_kk_", 0, 0);
+    /* polynomial_adjoints_[i][fidx: FeatureIdx] adjoint of structural feature
+     * `fidx` of atom i */
     view_2d d_polynomial_adjoints_ = view_2d("d_polynomial_adjoints_", 0, 0);
     /* basis_function_adjoints_[i][TypeCombIdx][n][LMIdx] */
-    view_4dc d_basis_function_adjoints_ = view_4dc("d_basis_function_adjoints_", 0, 0, 0, 0);
+    view_4dc d_basis_function_adjoints_ =
+        view_4dc("d_basis_function_adjoints_", 0, 0, 0, 0);
 
     double energy_;
     /* atom-wise energy, (inum_, ) */
@@ -134,15 +141,17 @@ protected:
     dview_2d coords_kk_ = dview_2d("coords_kk_", 0, 0);
     view_3d d_dirj_ = view_3d("d_dirj_", 0, 0, 0);
     view_3d d_djri_ = view_3d("d_djri_", 0, 0, 0);
-    dview_2d polynomial_features_kk_ = dview_2d("polynomial_features_kk_", 0, 0);
+    dview_2d polynomial_features_kk_ =
+        dview_2d("polynomial_features_kk_", 0, 0);
     dview_3d force_features_kk_ = dview_3d("force_features_kk_", 0, 0, 0);
     dview_2d stress_features_kk_ = dview_2d("stress_features_kk_", 0, 0);
 
-public:
+   public:
     MLIPModel() = default;
     ~MLIPModel() = default;
 
-    void initialize(const MLIPInput& input, const vector1d& reg_coeffs, const Readgtinv& gtinvdata);
+    void initialize(const MLIPInput& input, const vector1d& reg_coeffs,
+                    const Readgtinv& gtinvdata);
 
     // getters
     vector1d get_reg_coeffs() const;
@@ -165,14 +174,15 @@ public:
 
     // setter for structure
     void set_structure(const std::vector<ElementType>& types,
-                       const vector3d& displacements, const std::vector<std::vector<SiteIdx>>& neighbors);
+                       const vector3d& displacements,
+                       const std::vector<std::vector<SiteIdx>>& neighbors);
     // defined here for LAMMPS interface
-    template<class PairStyle, class NeighListKokkos>
-    void set_structure_lmp(PairStyle *fpair, NeighListKokkos* k_list);
+    template <class PairStyle, class NeighListKokkos>
+    void set_structure_lmp(PairStyle* fpair, NeighListKokkos* k_list);
 
     // defined here for LAMMPS interface
-    template<class PairStyle>
-    void get_forces_lmp(PairStyle *fpair);
+    template <class PairStyle>
+    void get_forces_lmp(PairStyle* fpair);
 
     void compute();
     void prepare_features();
@@ -193,20 +203,22 @@ public:
     void compute_force_and_stress_features();
 
     KOKKOS_INLINE_FUNCTION
-    double product_real_part(const Kokkos::complex<double>& lhs, const Kokkos::complex<double>& rhs) const;
+    double product_real_part(const Kokkos::complex<double>& lhs,
+                             const Kokkos::complex<double>& rhs) const;
 
     void dump(std::ostream& os) const;
 
-private:
-    void initialize_radial_basis(const int pair_type_id, const vector2d& params);
-    void initialize_gtinv(const int n_types, const int n_fn, const int model_type, const int maxp,
+   private:
+    void initialize_radial_basis(const int pair_type_id,
+                                 const vector2d& params);
+    void initialize_gtinv(const int n_types, const int n_fn,
+                          const int model_type, const int maxp,
                           const Readgtinv& gtinvdata);
     void initialize_typecomb(const int n_types, const int n_typecomb);
     void initialize_sph(const int maxl);
     void initialize_sph_AB(const int maxl);
-
 };
 
-} // namespace MLIP
+}  // namespace MLIP_NS
 
-#endif // MLIPKK_H_
+#endif  // MLIPKK_H_

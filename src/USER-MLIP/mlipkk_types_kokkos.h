@@ -44,10 +44,13 @@ using dview_2b = Kokkos::DualView<bool**, Layout, Device>;
 
 using sview_1d = Kokkos::Experimental::ScatterView<double*, Layout, ExecSpace>;
 using sview_2d = Kokkos::Experimental::ScatterView<double**, Layout, ExecSpace>;
-using sview_3d = Kokkos::Experimental::ScatterView<double***, Layout, ExecSpace>;
-using sview_4d = Kokkos::Experimental::ScatterView<double****, Layout, ExecSpace>;
-using sview_4dc = Kokkos::Experimental::ScatterView<Kokkos::complex<double>****, Layout, ExecSpace>;
+using sview_3d =
+    Kokkos::Experimental::ScatterView<double***, Layout, ExecSpace>;
+using sview_4d =
+    Kokkos::Experimental::ScatterView<double****, Layout, ExecSpace>;
+using sview_4dc = Kokkos::Experimental::ScatterView<Kokkos::complex<double>****,
+                                                    Layout, ExecSpace>;
 
-}
+}  // namespace MLIP_NS
 
-#endif // MLIPKK_TYPES_KOKKOS_H_
+#endif  // MLIPKK_TYPES_KOKKOS_H_

@@ -31,11 +31,12 @@ struct MLIPInput {
     ~MLIPInput() = default;
 };
 
-void read_potential_file(const char* file, std::vector<std::string>& ele, vector1d& mass,
-                         MLIPInput* input, vector1d& reg_coeffs, Readgtinv& gtinvdata);
+void read_potential_file(const char* file, std::vector<std::string>& ele,
+                         vector1d& mass, MLIPInput* input, vector1d& reg_coeffs,
+                         Readgtinv& gtinvdata);
 
 int get_num_coeffs(const MLIPInput& input, const Readgtinv& gtinvdata);
 
 }  // namespace MLIP_NS
 
-#endif // MLIPKK_POTENTIAL_PARSER_H_
+#endif  // MLIPKK_POTENTIAL_PARSER_H_

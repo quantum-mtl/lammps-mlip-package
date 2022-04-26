@@ -7,8 +7,7 @@
 namespace MLIP_NS {
 
 Readgtinv::Readgtinv(const int gtinv_order, const vector1i& gtinv_maxl,
-                     const std::vector<bool>& gtinv_sym)
-{
+                     const std::vector<bool>& gtinv_sym) {
     screening(gtinv_order, gtinv_maxl, gtinv_sym);
 }
 
@@ -17,7 +16,7 @@ Readgtinv::Readgtinv(const int gtinv_order, const vector1i& gtinv_maxl,
 /// @param[in] gtinv_maxl vector of l_max for order = 2, 3, ...
 /// @param[in] gtinv_sym
 void Readgtinv::screening(const int& gtinv_order, const vector1i& gtinv_maxl,
-                          const std::vector<bool>& gtinv_sym){
+                          const std::vector<bool>& gtinv_sym) {
     MLIP_NS::GtinvDataKK data;
     const vector2i l_array_all = data.get_l_array();
     const vector3i m_array_all = data.get_m_array();
@@ -25,29 +24,32 @@ void Readgtinv::screening(const int& gtinv_order, const vector1i& gtinv_maxl,
 
     IrrepsIdx count = 0;
     IrrepsTermIdx iterm_count = 0;
-    for (int i = 0; i < static_cast<int>(l_array_all.size()); ++i){
-        const vector1i &lcomb = l_array_all[i];
+    for (int i = 0; i < static_cast<int>(l_array_all.size()); ++i) {
+        const vector1i& lcomb = l_array_all[i];
         bool is_required(true);  // flag whether to fetch from GtinvDataKK
-        const int order = static_cast<int>(lcomb.size());  // number of angular momemtums
+        const int order =
+            static_cast<int>(lcomb.size());  // number of angular momemtums
         const int maxl = *(lcomb.end() - 1);
-        if (order > 1){
+        if (order > 1) {
             if ((order > gtinv_order) or (maxl > gtinv_maxl[order - 2])) {
                 is_required = false;
             }
             if (gtinv_sym[order - 2] == true) {
-                int n_ele = static_cast<int>(std::count(lcomb.begin(), lcomb.end(), lcomb[0]));
+                int n_ele = static_cast<int>(
+                    std::count(lcomb.begin(), lcomb.end(), lcomb[0]));
                 if (n_ele != order) {
                     is_required = false;
                 }
             }
         }
 
-        if (is_required == true){
+        if (is_required == true) {
             const int num_terms = static_cast<int>(m_array_all[i].size());
-            std::vector<std::vector<LMIdx>> vec1(num_terms, std::vector<LMIdx>(order));
-            for (int term = 0; term < num_terms; ++term){
-                const auto &mcomb = m_array_all[i][term];
-                for (int k = 0; k < order; ++k){
+            std::vector<std::vector<LMIdx>> vec1(num_terms,
+                                                 std::vector<LMIdx>(order));
+            for (int term = 0; term < num_terms; ++term) {
+                const auto& mcomb = m_array_all[i][term];
+                for (int k = 0; k < order; ++k) {
                     const int l = lcomb[k];
                     const int m = mcomb[k];
                     const LMIdx lm = l * l + l + m;
@@ -73,4 +75,4 @@ void Readgtinv::screening(const int& gtinv_order, const vector1i& gtinv_maxl,
     }
 }
 
-} // namespace MLIP_NS
+}  // namespace MLIP_NS

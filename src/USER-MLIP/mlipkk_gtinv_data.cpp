@@ -27,10 +27,9 @@
 
 namespace MLIP_NS {
 
-GtinvDataKK::GtinvDataKK(){
-    set_gtinv_info();
-}
+GtinvDataKK::GtinvDataKK() { set_gtinv_info(); }
 
+// clang-format off
 void GtinvDataKK::set_gtinv_info(){
 
     l_array_all =
@@ -24579,5 +24578,6 @@ void GtinvDataKK::set_gtinv_info(){
          {1, 1, 0, 0, -1, -1},
          {1, 1, 1, -1, -1, -1}}};
 }
+// clang-format on
 
-} // namespace MLIP_NS
+}  // namespace MLIP_NS

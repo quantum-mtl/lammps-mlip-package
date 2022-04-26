@@ -263,6 +263,23 @@ cd workspace
 sh ./containers/install.sh
 ```
 
+Install pre-commit and formatter
+```shell
+sudo apt install clang-format
+pip install pre-commit
+pre-commit install
+# pre-commit run --all-files
+```
+
+### Formatting
+
+If you want to disable clang-format for some region:
+```cpp
+// clang-format off
+some_codes_here
+// clang-format on
+```
+
 ### Unit test
 Unit tests are managed by GoogleTest.
 If you add a unit test, modify `test/CMakeLists.txt`.

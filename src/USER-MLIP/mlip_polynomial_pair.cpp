@@ -23,11 +23,12 @@
 
 #include "mlip_polynomial_pair.h"
 
-PolynomialPair::PolynomialPair(){}
-/// @details lm_info is a dummy placeholder, actually not used in this constructor
-PolynomialPair::PolynomialPair
-(const struct feature_params& fp, const ModelParams& modelp, const vector2i& lm_info){
-
+PolynomialPair::PolynomialPair() {}
+/// @details lm_info is a dummy placeholder, actually not used in this
+/// constructor
+PolynomialPair::PolynomialPair(const struct feature_params& fp,
+                               const ModelParams& modelp,
+                               const vector2i& lm_info) {
     const int n_tc = modelp.get_type_comb_pair().size();
     const int n_fn = modelp.get_n_fn();
     const int n_des = modelp.get_n_des();
@@ -46,36 +47,34 @@ PolynomialPair::PolynomialPair
     uniq_comb = vector2i(uniq_comb_set.begin(), uniq_comb_set.end());
 }
 
-PolynomialPair::~PolynomialPair(){}
+PolynomialPair::~PolynomialPair() {}
 
-void PolynomialPair::set_uniq_comb(const vector2i& comb_all){
-
-    if (comb_all.size() > 0){
+void PolynomialPair::set_uniq_comb(const vector2i& comb_all) {
+    if (comb_all.size() > 0) {
         const int order = comb_all[0].size();
-        const vector2i &seq_array = poly_obj.permutation(order);
+        const vector2i& seq_array = poly_obj.permutation(order);
 
-        vector1i comb_i_info(order-1);
-        for (const auto& c: comb_all){
-            for (const auto& seq: seq_array){
-                for (int i = 1; i < order; ++i) comb_i_info[i-1] = c[seq[i]];
+        vector1i comb_i_info(order - 1);
+        for (const auto& c : comb_all) {
+            for (const auto& seq : seq_array) {
+                for (int i = 1; i < order; ++i) comb_i_info[i - 1] = c[seq[i]];
                 uniq_comb_set.insert(comb_i_info);
             }
         }
     }
 }
 
-void PolynomialPair::set_polynomial_array
-(const vector2i& comb_all, const int& sindex){
-
-    if (comb_all.size() > 0){
+void PolynomialPair::set_polynomial_array(const vector2i& comb_all,
+                                          const int& sindex) {
+    if (comb_all.size() > 0) {
         const int order = comb_all[0].size();
-        const vector2i &seq_array = poly_obj.permutation(order);
+        const vector2i& seq_array = poly_obj.permutation(order);
 
-        int tc0,n0,reg_i(sindex),cindex;
-        vector1i comb_i_info(order-1);
-        for (const auto& c: comb_all){
-            for (const auto& seq: seq_array){
-                for (int i = 1; i < order; ++i) comb_i_info[i-1] = c[seq[i]];
+        int tc0, n0, reg_i(sindex), cindex;
+        vector1i comb_i_info(order - 1);
+        for (const auto& c : comb_all) {
+            for (const auto& seq : seq_array) {
+                for (int i = 1; i < order; ++i) comb_i_info[i - 1] = c[seq[i]];
                 cindex = poly_obj.find_comb(uniq_comb_set, comb_i_info, 0);
                 poly_obj.seq2tcn(c[seq[0]], tc0, n0);
                 struct PolynomialLammps pl = {n0, reg_i, cindex, order};
@@ -86,8 +85,8 @@ void PolynomialPair::set_polynomial_array
     }
 }
 
-const polyvec1& PolynomialPair::get_polynomial_info
-(const int& tc, const int& n0) const{
+const polyvec1& PolynomialPair::get_polynomial_info(const int& tc,
+                                                    const int& n0) const {
     return poly_array[tc][n0];
 }
 const vector2i& PolynomialPair::get_uniq_comb() const { return uniq_comb; }

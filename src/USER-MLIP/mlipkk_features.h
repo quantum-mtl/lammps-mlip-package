@@ -36,10 +36,10 @@ void get_fn(const double& dis, const double& cutoff, const char* radial_type,
             const vector2d& params, vector1d& fn, vector1d& fn_dr);
 
 void get_fn_ylm_dev(const double delx, const double dely, const double delz,
-                    const SphericalHarmonics& sph,
-                    const vector1d& fn, const vector1d& fn_d,
-                    vector2dc& fn_ylm_dx, vector2dc& fn_ylm_dy, vector2dc& fn_ylm_dz);
+                    const SphericalHarmonics& sph, const vector1d& fn,
+                    const vector1d& fn_d, vector2dc& fn_ylm_dx,
+                    vector2dc& fn_ylm_dy, vector2dc& fn_ylm_dz);
 
-} // namespace MLIP_NS
+}  // namespace MLIP_NS
 
-#endif // MLIPKK_FEATURES_H_
+#endif  // MLIPKK_FEATURES_H_

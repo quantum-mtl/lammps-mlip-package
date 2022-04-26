@@ -24,15 +24,15 @@
 #ifndef __PYMLCPP_MODEL
 #define __PYMLCPP_MODEL
 
-#include <iostream>
-#include <fstream>
-#include <vector>
-#include <set>
-#include <map>
 #include <array>
-#include <string>
 #include <complex>
+#include <fstream>
+#include <iostream>
+#include <map>
 #include <numeric>
+#include <set>
+#include <string>
+#include <vector>
 
 #include "boost/multi_array.hpp"
 
@@ -60,12 +60,11 @@ using barray2dc = boost::multi_array<dc, 2>;
 using barray3dc = boost::multi_array<dc, 3>;
 using barray4dc = boost::multi_array<dc, 4>;
 
-template<typename T>
-void print_time(clock_t& start, clock_t& end, const T& memo){
-
+template <typename T>
+void print_time(clock_t& start, clock_t& end, const T& memo) {
     std::cout << " elapsed time: " << memo << ": "
-        << (double)(end-start) / CLOCKS_PER_SEC << " (sec.)" << std::endl;
-
+              << (double)(end - start) / CLOCKS_PER_SEC << " (sec.)"
+              << std::endl;
 }
 
 struct feature_params {

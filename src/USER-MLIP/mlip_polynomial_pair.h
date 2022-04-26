@@ -24,12 +24,11 @@
 #ifndef __MLIP_POLYNOMIAL_PAIR
 #define __MLIP_POLYNOMIAL_PAIR
 
-#include "mlip_pymlcpp.h"
 #include "mlip_model_params.h"
 #include "mlip_polynomial.h"
+#include "mlip_pymlcpp.h"
 
-class PolynomialPair{
-
+class PolynomialPair {
     vector2i uniq_comb;
     std::set<vector1i> uniq_comb_set;
 
@@ -39,8 +38,7 @@ class PolynomialPair{
     void set_uniq_comb(const vector2i& comb_all);
     void set_polynomial_array(const vector2i& combs, const int& sindex);
 
-    public:
-
+   public:
     PolynomialPair();
     PolynomialPair(const struct feature_params& fp, const ModelParams& modelp,
                    const vector2i& lm_info);
@@ -48,7 +46,6 @@ class PolynomialPair{
 
     const polyvec1& get_polynomial_info(const int& tc, const int& n0) const;
     const vector2i& get_uniq_comb() const;
-
 };
 
 #endif

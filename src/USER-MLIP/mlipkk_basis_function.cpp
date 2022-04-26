@@ -29,7 +29,7 @@ namespace MLIP_NS {
 
 double cosine_cutoff_function(const double& dis, const double& cutoff) {
     if (dis < cutoff) {
-        return 0.5 * (cos (M_PI * dis / cutoff) + 1.0);
+        return 0.5 * (cos(M_PI * dis / cutoff) + 1.0);
     } else {
         return 0.0;
     }
@@ -37,7 +37,7 @@ double cosine_cutoff_function(const double& dis, const double& cutoff) {
 
 double cosine_cutoff_function_d(const double& dis, const double& cutoff) {
     if (dis < cutoff) {
-        return - 0.5 * M_PI / cutoff * sin (M_PI * dis / cutoff);
+        return -0.5 * M_PI / cutoff * sin(M_PI * dis / cutoff);
     } else {
         return 0.0;
     }
@@ -50,10 +50,9 @@ double gauss(const double& dis, const double& beta, const double& mu) {
 /// @param[out] bf guassian
 /// @param[out] bf_d derivative of gaussian w.r.t. distance
 void gauss_d(const double& dis, const double& beta, const double& mu,
-             double& bf, double& bf_d)
-{
+             double& bf, double& bf_d) {
     bf = gauss(dis, beta, mu);
-    bf_d = - 2.0 * beta * (dis - mu) * bf;
+    bf_d = -2.0 * beta * (dis - mu) * bf;
 }
 
-} // namespace MLIP_NS
+}  // namespace MLIP_NS

@@ -23,11 +23,11 @@
 
 #include "mlipkk_features.h"
 
-#include <iostream>
-#include <vector>
+#include <cassert>
 #include <cmath>
 #include <cstring>
-#include <cassert>
+#include <iostream>
+#include <vector>
 
 #include "mlipkk_basis_function.h"
 #include "mlipkk_spherical_harmonics.h"
@@ -37,8 +37,7 @@ namespace MLIP_NS {
 
 /// @param[out] fn fn[n] is value of radial functions with the n-th parameter
 void get_fn(const double& dis, const double& cutoff, const char* radial_type,
-            const vector2d& params, vector1d& fn)
-{
+            const vector2d& params, vector1d& fn) {
     // TODO: other radial functions
     char accepted_radial_type[] = "gaussian";
     assert(strcmp(radial_type, accepted_radial_type) == 0);
@@ -46,17 +45,15 @@ void get_fn(const double& dis, const double& cutoff, const char* radial_type,
     double fc = cosine_cutoff_function(dis, cutoff);
 
     fn.resize(params.size());
-    for (int n = 0; n < static_cast<int>(params.size()); ++n){
+    for (int n = 0; n < static_cast<int>(params.size()); ++n) {
         fn[n] = gauss(dis, params[n][0], params[n][1]) * fc;
     }
 }
 
-
 /// @param[out] fn fn[n] is value of radial functions with the n-th parameter
 /// @param[out] fn_dr[n] is derivative of fn[n] w.r.t. radius
 void get_fn(const double& dis, const double& cutoff, const char* radial_type,
-            const vector2d& params, vector1d& fn, vector1d& fn_dr)
-{
+            const vector2d& params, vector1d& fn, vector1d& fn_dr) {
     // TODO: other radial functions
     char accepted_radial_type[] = "gaussian";
     assert(strcmp(radial_type, accepted_radial_type) == 0);
@@ -67,7 +64,7 @@ void get_fn(const double& dis, const double& cutoff, const char* radial_type,
     fn.resize(params.size());
     fn_dr.resize(params.size());
     double fn_val, fn_dr_val;
-    for (int n = 0; n < static_cast<int>(params.size()); ++n){
+    for (int n = 0; n < static_cast<int>(params.size()); ++n) {
         gauss_d(dis, params[n][0], params[n][1], fn_val, fn_dr_val);
         fn[n] = fn_val * fc;
         fn_dr[n] = fn_dr_val * fc + fn_val * fc_dr;
@@ -78,11 +75,11 @@ void get_fn(const double& dis, const double& cutoff, const char* radial_type,
 /// @param[out] fn_ylm_dy (n_fn, n_lm_half)
 /// @param[out] fn_ylm_dz (n_fn, n_lm_half)
 void get_fn_ylm_dev(const double delx, const double dely, const double delz,
-                    const SphericalHarmonics& sph,
-                    const vector1d& fn, const vector1d& fn_d,
-                    vector2dc& fn_ylm_dx, vector2dc& fn_ylm_dy, vector2dc& fn_ylm_dz)
-{
-    const auto r_polar_azimuthal = to_polar_coordinates(vector1d{delx, dely, delz});
+                    const SphericalHarmonics& sph, const vector1d& fn,
+                    const vector1d& fn_d, vector2dc& fn_ylm_dx,
+                    vector2dc& fn_ylm_dy, vector2dc& fn_ylm_dz) {
+    const auto r_polar_azimuthal =
+        to_polar_coordinates(vector1d{delx, dely, delz});
     const double invdis = 1.0 / r_polar_azimuthal[0];
     const double costheta = cos(r_polar_azimuthal[1]);
 
@@ -112,4 +109,4 @@ void get_fn_ylm_dev(const double delx, const double dely, const double delz,
     }
 }
 
-} // namespace MLIP_NS
+}  // namespace MLIP_NS

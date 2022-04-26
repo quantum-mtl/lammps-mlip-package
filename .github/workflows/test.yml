@@ -7,8 +7,25 @@ on:
     branches: [master]
 
 jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        submodules: true
+    - uses: actions/setup-python@v2
+    - name: Install dependancies
+      run: |
+        sudo apt update
+        sudo apt install -y clang-format
+        clang-format --version
+        pip install pre-commit
+        pre-commit install
+    - name: Format
+      run: |
+        pre-commit run --all-files
   unit-test:
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
       with:
@@ -25,7 +42,7 @@ jobs:
         make -j 4
         ctest -vv
   regression-test:
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
       with:

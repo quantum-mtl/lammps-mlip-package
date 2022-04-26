@@ -25,14 +25,13 @@
 
 namespace MLIP_NS {
 
-GtinvData::GtinvData(){
-    set_gtinv_info();
-}
+GtinvData::GtinvData() { set_gtinv_info(); }
 
-const vector2i& GtinvData::get_l_array() const{ return l_array_all; }
-const vector3i& GtinvData::get_m_array() const{ return m_array_all; }
-const vector2d& GtinvData::get_coeffs() const{ return coeffs_all; }
+const vector2i& GtinvData::get_l_array() const { return l_array_all; }
+const vector3i& GtinvData::get_m_array() const { return m_array_all; }
+const vector2d& GtinvData::get_coeffs() const { return coeffs_all; }
 
+// clang-format off
 void GtinvData::set_gtinv_info(){
 
     l_array_all =
@@ -24581,5 +24580,6 @@ void GtinvData::set_gtinv_info(){
          {1, 1, 0, 0, -1, -1},
          {1, 1, 1, -1, -1, -1}}};
 }
+// clang-format on
 
-} // namespace MLIP_NS
+}  // namespace MLIP_NS
