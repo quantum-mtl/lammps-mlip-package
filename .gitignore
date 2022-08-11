@@ -42,3 +42,5 @@ googletest
 *.sif
 cmake-build-debug/
 .ipynb_checkpoints
+
+docs_build/
