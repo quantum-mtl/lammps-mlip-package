@@ -119,6 +119,11 @@ void compute_ylm_der(const NeighborPairIdx npidx, const double costheta,
                      const double azimuthal, const double r, const int maxl,
                      const view_2d d_alp_sintheta, view_2dc d_ylm_dx,
                      view_2dc d_ylm_dy, view_2dc d_ylm_dz) {
+    if (maxl == 0) {
+        // We assume d_ylm_d[xyz] are filled by zero
+        return;
+    }
+
     const double sintheta = sqrt(1.0 - costheta * costheta);
     const double cosphi = cos(azimuthal);
     const double sinphi = sin(azimuthal);
@@ -128,8 +133,8 @@ void compute_ylm_der(const NeighborPairIdx npidx, const double costheta,
     const double tc = 2.0 * c2;
     const double invr = 1.0 / r;
 
-    // (l, 0)
-    for (int l = 0; l <= maxl; ++l) {
+    // (l, 0) for l >= 1
+    for (int l = 1; l <= maxl; ++l) {
         const double common = d_alp_sintheta(npidx, lm2i(l, 1)) * sintheta *
                               invr * sqrt(0.5 * l * (l + 1));
         d_ylm_dx(npidx, lm2i(l, l)) = common * costheta * cosphi;
