@@ -41,8 +41,9 @@ void Readgtinv::screening(const int& gtinv_order, const vector1i& gtinv_maxl,
 
     for (int i = 0; i < l_array_all.size(); ++i) {
         const vector1i& lcomb = l_array_all[i];
-        bool is_required(true);          // flag whether to fetch from GtinvData
+        bool is_required = true;         // flag whether to fetch from GtinvData
         const int order = lcomb.size();  // number of angular momemtums
+        // TODO: const int maxl = *std::prev(lcomb.end());
         const int maxl = *(lcomb.end() - 1);
         if (order > 1) {
             if ((order > gtinv_order) or (maxl > gtinv_maxl[order - 2])) {
@@ -56,7 +57,7 @@ void Readgtinv::screening(const int& gtinv_order, const vector1i& gtinv_maxl,
             }
         }
 
-        if (is_required == true) {
+        if (is_required) {
             vector2i vec1(m_array_all[i].size(), vector1i(order));
             for (int j = 0; j < m_array_all[i].size(); ++j) {
                 const auto& mcomb = m_array_all[i][j];
